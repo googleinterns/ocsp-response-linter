@@ -13,10 +13,15 @@ import (
 	"net/http"
 	"io/ioutil"
 	"./linter"
+	// "errors"
 )
 
 func create_conn(cert_url string) *tls.Conn {
-	tls_conn, err := tls.Dial("tcp", cert_url, &tls.Config{})
+	config := &tls.Config{
+
+	}
+
+	tls_conn, err := tls.Dial("tcp", cert_url, config)
 	if err != nil {
 		panic("failed to connect: " + err.Error())
 	}
@@ -77,7 +82,7 @@ func parse_ocsp_resp(ocsp_resp []byte, issuer_cert *x509.Certificate) {
     	fmt.Println(string(ocsp_resp))
         panic(err.Error())
     }
-    linter.Check_ocsp_resp(parsed_resp)
+    linter.Check_Ocsp_Resp(parsed_resp)
 }
 
 func send_ocsp_req(root_cert *x509.Certificate, issuer_cert *x509.Certificate, req_type string, dir string) {
@@ -92,6 +97,7 @@ func send_ocsp_req(root_cert *x509.Certificate, issuer_cert *x509.Certificate, r
 	defer http_resp.Body.Close()
     ocsp_resp, err := ioutil.ReadAll(http_resp.Body)
     if err != nil {
+    	// if HTTP 405 results from GET request, need to say that's a lint
         panic(err.Error())
     }
 
