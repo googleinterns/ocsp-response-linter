@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"io/ioutil"
 	"./linter"
-	// "errors"
 )
 
 func create_conn(cert_url string) *tls.Conn {
