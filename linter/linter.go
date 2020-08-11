@@ -1,10 +1,10 @@
 package linter
 
 import (
+	"errors"
 	"fmt"
 	"golang.org/x/crypto/ocsp"
 	"time"
-	"errors"
 )
 
 const (
@@ -13,9 +13,9 @@ const (
 )
 
 type lintstruct struct {
-	info string
+	info   string
 	source string
-	exec func(resp *ocsp.Response) error
+	exec   func(resp *ocsp.Response) error
 }
 
 var Lints = []lintstruct{
@@ -36,6 +36,7 @@ func LintProducedAtDate(resp *ocsp.Response) error {
 	if err != nil {
 		return err
 	}
+  
 	if time.Since(resp.ProducedAt) >  limit {
 		return errors.New("OCSP Response producedAt date is more than " + ProducedAtLimit + " in the past")
 	}
@@ -53,7 +54,7 @@ func LintThisUpdateDate(resp *ocsp.Response) error {
 	return nil
 }
 
-func Lint_OCSP_Resp(resp *ocsp.Response) {
+func LintOCSPResp(resp *ocsp.Response) {
 	fmt.Println("Linting OCSP Response...")
 	for _, lint := range Lints {
 		fmt.Print(lint.info + ": ")
@@ -68,9 +69,9 @@ func Lint_OCSP_Resp(resp *ocsp.Response) {
 }
 
 // check response for status and syntactic soundness
-func Check_Ocsp_Resp(resp *ocsp.Response) {
+func CheckOCSPResp(resp *ocsp.Response) {
 	// TODO: Implement all the lint cases
-	Lint_OCSP_Resp(resp);
+	LintOCSPResp(resp)
 
 	fmt.Println(ocsp.ResponseStatus(resp.Status).String()) // placeholder
 }
