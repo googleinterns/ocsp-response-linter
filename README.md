@@ -1,5 +1,7 @@
 # OCSP Response Linter
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/googleinterns/ocsp-response-linter)](https://goreportcard.com/report/github.com/googleinterns/ocsp-response-linter)
+
 OCSP Response Linter is a command line tool for fetching as well as linting and verifying OCSP responses.
 
 ## Lints and Verifications Sources
