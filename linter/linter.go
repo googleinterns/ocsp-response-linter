@@ -5,22 +5,17 @@ import (
 	"golang.org/x/crypto/ocsp"
 )
 
-const (
-	ProducedAtLimit = "96h" // 4 days
-	ThisUpdateLimit = "96h" // 4 days
-)
-
-type LintStruct struct {
-	info   string
-	source string
-	exec   func(resp *ocsp.Response) error
-}
-
 var StatusIntMap = map[int]string {
 	ocsp.Good: "good",
 	ocsp.Revoked: "revoked",
 	ocsp.Unknown: "unknown",
 	// ocsp.SeverFailed is never used:
+}
+
+type LintStruct struct {
+	info   string
+	source string
+	exec   func(resp *ocsp.Response) error
 }
 
 var Lints = []LintStruct{
@@ -34,29 +29,6 @@ var Lints = []LintStruct{
 		"Apple Lint 03",
 		LintThisUpdateDate,
 	},
-}
-
-func LintProducedAtDate(resp *ocsp.Response) error {
-	limit, err := time.ParseDuration(ProducedAtLimit)
-	if err != nil {
-		return err
-	}
-  
-	if time.Since(resp.ProducedAt) >  limit {
-		return errors.New("OCSP Response producedAt date is more than " + ProducedAtLimit + " in the past")
-	}
-	return nil
-}
-
-func LintThisUpdateDate(resp *ocsp.Response) error {
-	limit, err := time.ParseDuration(ThisUpdateLimit)
-	if err != nil {
-		return err
-	}
-	if time.Since(resp.ThisUpdate) > limit {
-		return errors.New("OCSP Response thisUpdate date is more than " + ThisUpdateLimit + " in the past")
-	}
-	return nil
 }
 
 func LintOCSPResp(resp *ocsp.Response) {
