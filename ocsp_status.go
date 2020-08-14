@@ -13,8 +13,14 @@ import (
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net/http"
-	// "errors"
+	"time"
 )
+
+const (
+	RespTimeLimit = "10s"
+)
+
+// verifications will also need to happen here
 
 func createConn(certURL string) *tls.Conn {
 	config := &tls.Config{}
@@ -77,19 +83,34 @@ func parseOCSPResp(ocspResp []byte, issuerCert *x509.Certificate) {
 	// ocsp.ParseResponse validates signature with issuerCert
 	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 	if err != nil {
+		// look at ocsp response errors
 		fmt.Println(string(ocspResp))
 		panic(err.Error())
 	}
-	linter.CheckOCSPResp(parsedResp)
+	linter.LintOCSPResp(parsedResp)
 }
 
 func sendOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string, dir string) {
 	httpReq := createOCSPReq(rootCert, issuerCert, reqType)
 
+	
+	startTime := time.Now()
+
 	httpClient := &http.Client{}
 	httpResp, err := httpClient.Do(httpReq)
 	if err != nil {
 		panic(err.Error())
+	}
+
+	endTime := time.Now()
+	limit, err := time.ParseDuration(RespTimeLimit)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Verification (source from Apple Lint 08)
+	if (endTime.Sub(startTime) > limit) {
+		fmt.Println("Server took longer than 10 seconds to respond")
 	}
 
 	defer httpResp.Body.Close()
