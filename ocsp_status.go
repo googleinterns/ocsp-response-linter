@@ -13,7 +13,6 @@ import (
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net/http"
-	// "errors"
 )
 
 func createConn(certURL string) *tls.Conn {

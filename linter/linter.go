@@ -12,58 +12,53 @@ const (
 	ThisUpdateLimit = "96h" // 4 days
 )
 
-type lint struct {
+type lintstruct struct {
 	info   string
 	source string
 	exec   func(resp *ocsp.Response) error
 }
 
-type verification struct {
-	info   string
-	source string
-	exec   func(resp *ocsp.Response) error
-}
-
-var lints = []lint{
+var Lints = []lintstruct{
 	{
-		"Check that response producedAt date is no more than four days in the past",
+		"Check that response producedAt date is no more than " + ProducedAtLimit + " in the past",
 		"Apple Lint 03",
-		lintProducedAtDate,
+		LintProducedAtDate,
 	},
 	{
-		"Check that response thisUpdate date is no more than four days in the past",
+		"Check that response thisUpdate date is no more than " + ThisUpdateLimit + " in the past",
 		"Apple Lint 03",
-		lintThisUpdateDate,
+		LintThisUpdateDate,
 	},
 }
 
-func lintProducedAtDate(resp *ocsp.Response) error {
+func LintProducedAtDate(resp *ocsp.Response) error {
 	limit, err := time.ParseDuration(ProducedAtLimit)
 	if err != nil {
 		return err
 	}
-	if time.Since(resp.ProducedAt) > limit {
-		return errors.New("OCSP Response producedAt date is more than 4 days in the past")
+  
+	if time.Since(resp.ProducedAt) >  limit {
+		return errors.New("OCSP Response producedAt date is more than " + ProducedAtLimit + " in the past")
 	}
 	return nil
 }
 
-func lintThisUpdateDate(resp *ocsp.Response) error {
+func LintThisUpdateDate(resp *ocsp.Response) error {
 	limit, err := time.ParseDuration(ThisUpdateLimit)
 	if err != nil {
 		return err
 	}
 	if time.Since(resp.ThisUpdate) > limit {
-		return errors.New("OCSP Response thisUpdate date is more than 4 days in the past")
+		return errors.New("OCSP Response thisUpdate date is more than " + ThisUpdateLimit + " in the past")
 	}
 	return nil
 }
 
 func LintOCSPResp(resp *ocsp.Response) {
 	fmt.Println("Linting OCSP Response...")
-	for _, test := range lints {
-		fmt.Print(test.info + ": ")
-		err := test.exec(resp)
+	for _, lint := range Lints {
+		fmt.Print(lint.info + ": ")
+		err := lint.exec(resp)
 		if err == nil {
 			fmt.Println("passed")
 		} else {
