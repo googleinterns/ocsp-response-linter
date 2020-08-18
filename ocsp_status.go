@@ -1,3 +1,4 @@
+// Package main provides the main command line functionality
 package main
 
 import (
@@ -15,10 +16,11 @@ import (
 	"net/http"
 )
 
-func createConn(certURL string) *tls.Conn {
+// createConn takes a provided server URL and attempts to establish a TLS connection with it
+func createConn(severURL string) *tls.Conn {
 	config := &tls.Config{}
 
-	tlsConn, err := tls.Dial("tcp", certURL, config)
+	tlsConn, err := tls.Dial("tcp", severURL, config)
 	if err != nil {
 		panic("failed to connect: " + err.Error())
 	}
@@ -31,6 +33,7 @@ func createConn(certURL string) *tls.Conn {
 	return tlsConn
 }
 
+// printCert prints the givern certificate using the external library github.com/grantae/certinfo
 func printCert(cert *x509.Certificate) {
 	result, err := certinfo.CertificateText(cert)
 	if err != nil {
@@ -39,6 +42,15 @@ func printCert(cert *x509.Certificate) {
 	fmt.Print(result)
 }
 
+// TODO: function that prints out an OCSP response
+func printResp(resp *ocsp.Response) {
+
+}
+
+// createOCSPReq creates an OCSP request using either GET or POST (see IETF RFC 6960)
+// rootCert is the root certificate (first certificate in the chain)
+// issuerCert is the last certificate in the chain
+// reqType is either GET or POST (TODO: change reqType to not be string)
 func createOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string) *http.Request {
 	// not sure what to do if there are multiple here
 	// make a request for each?
@@ -72,17 +84,8 @@ func createOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, req
 	return httpReq
 }
 
-func parseOCSPResp(ocspResp []byte, issuerCert *x509.Certificate) {
-	// ocsp.ParseResponse validates signature with issuerCert
-	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
-	if err != nil {
-		fmt.Println(string(ocspResp))
-		panic(err.Error())
-	}
-	linter.CheckOCSPResp(parsedResp)
-}
-
-func sendOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string, dir string) {
+// getOCSPResponse constructs and sends an OCSP request then returns the OCSP response
+func getOCSPResponse(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string, dir string) *ocsp.Response {
 	httpReq := createOCSPReq(rootCert, issuerCert, reqType)
 
 	httpClient := &http.Client{}
@@ -105,10 +108,18 @@ func sendOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqTy
 		}
 	}
 
-	parseOCSPResp(ocspResp, issuerCert)
+	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
+	if err != nil {
+		fmt.Println(string(ocspResp))
+		panic(err.Error())
+	}
+
+	return parsedResp
 }
 
+// main parses the users commandline arguments & flags and then runs the appropriate functions
 func main() {
+	// TODO: extract flag descriptions into constants?
 	print := flag.Bool("print", false, "Whether to print certificate or not")
 	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")
 	reqType := flag.String("type", http.MethodPost, "Whether to use GET or POST for OCSP request")
@@ -126,7 +137,12 @@ func main() {
 			}
 			// can't check signature w/o outside knowledge of who the issuer should be
 			// TODO: add functionality so user can specify who the issuer is
-			parseOCSPResp(ocspResp, nil)
+			parsedResp, err := ocsp.ParseResponse(ocspResp, nil)
+			if err != nil {
+				fmt.Println(string(ocspResp))
+				panic(err.Error())
+			}
+			linter.CheckOCSPResp(parsedResp)
 		}
 	} else {
 		certURLs := flag.Args()
@@ -147,10 +163,16 @@ func main() {
 
 			if ocspResp == nil {
 				fmt.Println("No OCSP response stapled")
-				sendOCSPReq(rootCert, issuerCert, *reqType, *dir)
+				parsedResp := getOCSPResponse(rootCert, issuerCert, *reqType, *dir)
+				linter.CheckOCSPResp(parsedResp)
 			} else {
 				fmt.Println("Stapled OCSP Response")
-				parseOCSPResp(ocspResp, issuerCert)
+				parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
+				if err != nil {
+					fmt.Println(string(ocspResp))
+					panic(err.Error())
+				}
+				linter.CheckOCSPResp(parsedResp)
 			}
 
 			tlsConn.Close()
