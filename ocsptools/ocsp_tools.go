@@ -11,6 +11,11 @@ import (
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net/http"
+	"time"
+)
+
+const (
+	RespTimeLimit = "10s"
 )
 
 // printCert prints the givern certificate using the external library github.com/grantae/certinfo
@@ -111,10 +116,23 @@ func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, ha
 
 // getOCSPResponse constructs and sends an OCSP request then returns the OCSP response
 func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
+	startTime := time.Now()
+
 	httpClient := &http.Client{}
 	httpResp, err := httpClient.Do(ocspReq)
 	if err != nil {
 		return nil, fmt.Errorf("Error sending http request: %w", err)
+	}
+
+	endTime := time.Now()
+	limit, err := time.ParseDuration(RespTimeLimit)
+	if err != nil {
+		panic(err.Error()) // error really shouldn't happen
+	}
+
+	// Verification (source from Apple Lint 08)
+	if (endTime.Sub(startTime) > limit) {
+		fmt.Printf("Server took longer than %s to respond \n", RespTimeLimit)
 	}
 
 	defer httpResp.Body.Close()
