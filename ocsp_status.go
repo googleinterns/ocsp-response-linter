@@ -12,33 +12,30 @@ import (
 )
 
 // createConn takes a provided server URL and attempts to establish a TLS connection with it
-func createConn(severURL string) *tls.Conn {
+func createConn(serverURL string) (*tls.Conn, error) {
 	config := &tls.Config{}
 
-	tlsConn, err := tls.Dial("tcp", severURL, config)
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
 	if err != nil {
-		panic("failed to connect: " + err.Error())
+		return nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
 	}
 
-	err = tlsConn.Handshake()
-	if err != nil {
-		panic("handshake failed: " + err.Error())
-	}
-
-	return tlsConn
+	return tlsConn, nil
 }
 
-func lintFile(respFile string) {
+func checkFromFile(respFile string) error {
 	ocspResp, err := ioutil.ReadFile(respFile)
 	if err != nil {
-		panic("Error reading OCSP response file: " + err.Error())
+		return fmt.Errorf("Error reading OCSP response file: %w", err)
 	}
 	// can't check signature w/o outside knowledge of who the issuer should be
 	// TODO: add functionality so user can specify who the issuer is
 	err = ocsptools.ParseAndLint(ocspResp, nil)
 	if err != nil {
-		panic("Error parsing OCSP response: " + err.Error())
+		return fmt.Errorf("Error parsing OCSP response: %w", err)
 	}
+
+	return nil
 }
 
 func checkFromCert(certFile string, get bool, ocspURL string, dir string, hash crypto.Hash) error {
@@ -47,22 +44,35 @@ func checkFromCert(certFile string, get bool, ocspURL string, dir string, hash c
 		reqMethod = http.MethodGet
 	}
 
-	ocspReq, issuerCert := ocsptools.CreateOCSPReqFromCert(certFile, ocspURL, reqMethod, hash)
-	ocspResp := ocsptools.GetOCSPResponse(ocspReq, dir)
+	ocspReq, issuerCert, err := ocsptools.CreateOCSPReqFromCert(certFile, ocspURL, reqMethod, hash)
+	if err != nil {
+		return fmt.Errorf("Error creating OCSP Request from certificate file: %w", err)
+	}
+
+	ocspResp, err := ocsptools.GetOCSPResponse(ocspReq)
+	if err != nil {
+		return fmt.Errorf("Error getting OCSP Response from certificate file: %w", err)
+	}
 
 	return ocsptools.ParseAndLint(ocspResp, issuerCert)
 
 }
 
 func checkFromURL(serverURL string, print bool, get bool, ocspURL string, dir string, hash crypto.Hash) error {
-	tlsConn := createConn(serverURL)
+	tlsConn, err := createConn(serverURL)
+	if err != nil {
+		return err
+	}
 
 	certChain := tlsConn.ConnectionState().PeerCertificates
-	rootCert := certChain[0]
-	issuerCert := certChain[len(certChain)-1]
+	leafCert := certChain[0]
+	issuerCert := certChain[1]
 
 	if print {
-		ocsptools.PrintCert(rootCert)
+		err = ocsptools.PrintCert(leafCert)
+		if err != nil {
+			return fmt.Errorf("Error printing certificate: %w", err)
+		}
 	}
 
 	ocspResp := tlsConn.OCSPResponse()
@@ -76,8 +86,22 @@ func checkFromURL(serverURL string, print bool, get bool, ocspURL string, dir st
 			reqMethod = http.MethodGet
 		}
 
-		ocspReq := ocsptools.CreateOCSPReq(ocspURL, rootCert, issuerCert, reqMethod, hash)
-		ocspResp = ocsptools.GetOCSPResponse(ocspReq, dir)
+		ocspReq, err := ocsptools.CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+		if err != nil {
+			return fmt.Errorf("Error creating OCSP Request: %w", err)
+		}
+
+		ocspResp, err = ocsptools.GetOCSPResponse(ocspReq)
+		if err != nil {
+			return fmt.Errorf("Error getting OCSP Response: %w", err)
+		}
+
+		if dir != "" {
+			err := ioutil.WriteFile(dir, ocspResp, 0644)
+			if err != nil {
+				return fmt.Errorf("Error writing OCSP Response to file %s: %w", dir, err)
+			}
+		}
 
 		return ocsptools.ParseAndLint(ocspResp, issuerCert)
 	} else {
@@ -101,14 +125,17 @@ func main() {
 	if *inresp {
 		respFiles := flag.Args()
 		for _, respFile := range respFiles {
-			lintFile(respFile)
+			err := checkFromFile(respFile)
+			if err != nil {
+				panic(fmt.Errorf("Error checking OCSP Response file %s: %w", respFile, err).Error())
+			}
 		}
 	} else if *incert {
 		certFiles := flag.Args()
 		for _, certFile := range certFiles {
 			err := checkFromCert(certFile, *get, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
-				panic(err.Error())
+				panic(fmt.Errorf("Error checking certificate file %s: %w", certFile, err).Error())
 			}
 		}
 	} else {
@@ -122,7 +149,7 @@ func main() {
 			fmt.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
 			err = checkFromURL(serverURL, *print, *get, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
-				panic(err.Error())
+				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
 			}
 		}
 	}

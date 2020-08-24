@@ -14,12 +14,13 @@ import (
 )
 
 // printCert prints the givern certificate using the external library github.com/grantae/certinfo
-func PrintCert(cert *x509.Certificate) {
+func PrintCert(cert *x509.Certificate) error {
 	result, err := certinfo.CertificateText(cert)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("failed converting certificate for printing: %w", err)
 	}
 	fmt.Print(result)
+	return nil
 }
 
 func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
@@ -44,21 +45,21 @@ func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
 }
 
 // createOCSPReq creates an OCSP request using either GET or POST (see IETF RFC 6960)
-// rootCert is the root certificate (first certificate in the chain)
+// leafCert is the root certificate (first certificate in the chain)
 // issuerCert is the last certificate in the chain
 // reqMethod is either GET or POST (TODO: change reqMethod to not be string)
-func CreateOCSPReq(ocspURL string, rootCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) *http.Request {
+func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*http.Request, error) {
 	// not sure what to do if there are multiple here
 	// make a request for each?
 	if ocspURL == "" {
-		ocspURL = rootCert.OCSPServer[0]
+		ocspURL = leafCert.OCSPServer[0]
 	}
 
-	ocspReq, err := ocsp.CreateRequest(rootCert, issuerCert, &ocsp.RequestOptions{
+	ocspReq, err := ocsp.CreateRequest(leafCert, issuerCert, &ocsp.RequestOptions{
 		Hash: hash,
 	})
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("Failed creating OCSP Request: %w", err)
 	}
 
 	body := bytes.NewBuffer(ocspReq)
@@ -72,68 +73,67 @@ func CreateOCSPReq(ocspURL string, rootCert *x509.Certificate, issuerCert *x509.
 
 	httpReq, err := http.NewRequest(reqMethod, ocspURL, body)
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("Failed to create HTTP request: %w", err)
 	}
 
 	httpReq.Header.Add("Content-Type", "application/ocsp-request")
 	httpReq.Header.Add("Accept", "application/ocsp-response")
 
-	return httpReq
+	return httpReq, nil
 }
 
-func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, hash crypto.Hash) (*http.Request, *x509.Certificate) {
+func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, hash crypto.Hash) (*http.Request, *x509.Certificate, error) {
 	cert, err := ioutil.ReadFile(certFile)
 	if err != nil {
-		panic("Error reading certificate file: " + err.Error())
+		return nil, nil, fmt.Errorf("Error reading certificate file: %w", err)
 	}
 
 	parsedCert, err := x509.ParseCertificate(cert)
 	if err != nil {
-		panic("Error parsing certificate: " + err.Error())
+		return nil, nil, fmt.Errorf("Error parsing certificate file: %w", err)
 	}
 
 	if len(parsedCert.IssuingCertificateURL) == 0 {
-		panic("Provided certificate has no issuing certificate url")
+		return nil, nil, fmt.Errorf("Certificate read from file %s has no issuing certificate url", certFile)
 	}
 
 	issuerURL := parsedCert.IssuingCertificateURL[0]
 	issuerCert, err := GetCertFromIssuerURL(issuerURL)
 	if err != nil {
-		panic("Error getting certificate from issuer url: " + err.Error())
+		return nil, nil, fmt.Errorf("Error getting certificate from issuer url: %w", err)
 	}
-	return CreateOCSPReq(ocspURL, parsedCert, issuerCert, reqMethod, hash), issuerCert
+
+	ocspReq, err := CreateOCSPReq(ocspURL, parsedCert, issuerCert, reqMethod, hash)
+	if err != nil {
+		return nil, issuerCert, fmt.Errorf("Error creating OCSP request from certificate file: %w", err)
+	}
+
+	return ocspReq, issuerCert, nil
 }
 
 // getOCSPResponse constructs and sends an OCSP request then returns the OCSP response
-func GetOCSPResponse(ocspReq *http.Request, dir string) []byte {
+func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
 	httpClient := &http.Client{}
 	httpResp, err := httpClient.Do(ocspReq)
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("Error sending http request: %w", err)
 	}
 
 	defer httpResp.Body.Close()
 	ocspResp, err := ioutil.ReadAll(httpResp.Body)
 	if err != nil {
 		// if HTTP 405 results from GET request, need to say that's a lint
-		panic(err.Error())
+		return nil, fmt.Errorf("Error reading http response body: %w", err)
 	}
 
-	if dir != "" {
-		err := ioutil.WriteFile(dir, ocspResp, 0644)
-		if err != nil {
-			panic("Error writing to file: " + err.Error())
-		}
-	}
-
-	return ocspResp
+	return ocspResp, nil
 }
 
 func ParseAndLint(ocspResp []byte, issuerCert *x509.Certificate) error {
 	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 	if err != nil {
 		fmt.Println(string(ocspResp)) // for debugging, will remove
-		return err
+		return fmt.Errorf("Error parsing OCSP response: %w", err)
 	}
 	linter.CheckOCSPResp(parsedResp)
 	return nil
