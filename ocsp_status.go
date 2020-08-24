@@ -38,9 +38,9 @@ func checkFromFile(respFile string) error {
 	return nil
 }
 
-func checkFromCert(certFile string, get bool, ocspURL string, dir string, hash crypto.Hash) error {
+func checkFromCert(certFile string, isGet bool, ocspURL string, dir string, hash crypto.Hash) error {
 	reqMethod := http.MethodPost
-	if get {
+	if isGet {
 		reqMethod = http.MethodGet
 	}
 
@@ -58,7 +58,7 @@ func checkFromCert(certFile string, get bool, ocspURL string, dir string, hash c
 
 }
 
-func checkFromURL(serverURL string, print bool, get bool, ocspURL string, dir string, hash crypto.Hash) error {
+func checkFromURL(serverURL string, shouldPrint bool, isGet bool, ocspURL string, dir string, hash crypto.Hash) error {
 	tlsConn, err := createConn(serverURL)
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func checkFromURL(serverURL string, print bool, get bool, ocspURL string, dir st
 	leafCert := certChain[0]
 	issuerCert := certChain[1]
 
-	if print {
+	if shouldPrint {
 		err = ocsptools.PrintCert(leafCert)
 		if err != nil {
 			return fmt.Errorf("Error printing certificate: %w", err)
@@ -82,7 +82,7 @@ func checkFromURL(serverURL string, print bool, get bool, ocspURL string, dir st
 		fmt.Println("No OCSP response stapled")
 
 		reqMethod := http.MethodPost
-		if get {
+		if isGet {
 			reqMethod = http.MethodGet
 		}
 
@@ -116,11 +116,15 @@ func main() {
 	inresp := flag.Bool("inresp", false, "Whether to read in an OCSP responses or not")
 	incert := flag.Bool("incert", false, "Whether to read in certificate files or not")
 	ocspurl := flag.String("ocspurl", "", "User provided OCSP url, default fetch from certificate")
-	print := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
-	get := flag.Bool("get", false, "Whether to use GET for OCSP request")
+	shouldPrint := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
+	isGet := flag.Bool("get", false, "Whether to use GET for OCSP request")
 	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")	
 
 	flag.Parse()
+
+	if *inresp && *incert {
+		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
+	}
 
 	if *inresp {
 		respFiles := flag.Args()
@@ -133,7 +137,7 @@ func main() {
 	} else if *incert {
 		certFiles := flag.Args()
 		for _, certFile := range certFiles {
-			err := checkFromCert(certFile, *get, *ocspurl, *dir, crypto.SHA1)
+			err := checkFromCert(certFile, *isGet, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking certificate file %s: %w", certFile, err).Error())
 			}
@@ -142,12 +146,12 @@ func main() {
 		serverURLs := flag.Args()
 
 		for _, serverURL := range serverURLs {
-			err := checkFromURL(serverURL, *print, *get, *ocspurl, *dir, crypto.SHA256)
+			err := checkFromURL(serverURL, *shouldPrint, *isGet, *ocspurl, *dir, crypto.SHA256)
 			if err == nil {
 				return
 			}
 			fmt.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
-			err = checkFromURL(serverURL, *print, *get, *ocspurl, *dir, crypto.SHA1)
+			err = checkFromURL(serverURL, *shouldPrint, *isGet, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
 			}
