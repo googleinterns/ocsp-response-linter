@@ -49,8 +49,6 @@ func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
 // issuerCert is the last certificate in the chain
 // reqMethod is either GET or POST (TODO: change reqMethod to not be string)
 func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*http.Request, error) {
-	// not sure what to do if there are multiple here
-	// make a request for each?
 	if ocspURL == "" {
 		ocspURL = leafCert.OCSPServer[0]
 	}
