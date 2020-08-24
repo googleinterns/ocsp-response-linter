@@ -133,6 +133,6 @@ func ParseAndLint(ocspResp []byte, issuerCert *x509.Certificate) error {
 		fmt.Println(string(ocspResp)) // for debugging, will remove
 		return fmt.Errorf("Error parsing OCSP response: %w", err)
 	}
-	linter.CheckOCSPResp(parsedResp)
+	linter.LintOCSPResp(parsedResp)
 	return nil
 }
