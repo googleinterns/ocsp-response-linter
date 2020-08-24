@@ -9,7 +9,7 @@ var StatusIntMap = map[int]string {
 	ocsp.Good: "good",
 	ocsp.Revoked: "revoked",
 	ocsp.Unknown: "unknown",
-	// ocsp.SeverFailed is never used:
+	// ocsp.SeverFailed is never used
 }
 
 type LintStruct struct {
@@ -44,5 +44,5 @@ func LintOCSPResp(resp *ocsp.Response) {
 			fmt.Println("failed: " + err.Error())
 		}
 	}
-	fmt.Println("Finished linting OCSP response...")
+	fmt.Println("Finished linting OCSP response")
 }
