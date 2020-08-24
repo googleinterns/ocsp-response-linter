@@ -1,159 +1,160 @@
+// Package main provides the main command line functionality
 package main
 
 import (
-	"./linter"
-	"bytes"
+	"./ocsptools"
 	"crypto"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/base64"
 	"flag"
 	"fmt"
-	"github.com/grantae/certinfo"
-	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net/http"
 )
 
-func createConn(certURL string) *tls.Conn {
+// createConn takes a provided server URL and attempts to establish a TLS connection with it
+func createConn(serverURL string) (*tls.Conn, error) {
 	config := &tls.Config{}
 
-	tlsConn, err := tls.Dial("tcp", certURL, config)
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
 	if err != nil {
-		panic("failed to connect: " + err.Error())
+		return nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
 	}
 
-	err = tlsConn.Handshake()
-	if err != nil {
-		panic("handshake failed: " + err.Error())
-	}
-
-	return tlsConn
+	return tlsConn, nil
 }
 
-func printCert(cert *x509.Certificate) {
-	result, err := certinfo.CertificateText(cert)
+func checkFromFile(respFile string) error {
+	ocspResp, err := ioutil.ReadFile(respFile)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("Error reading OCSP response file: %w", err)
 	}
-	fmt.Print(result)
+	// can't check signature w/o outside knowledge of who the issuer should be
+	// TODO: add functionality so user can specify who the issuer is
+	err = ocsptools.ParseAndLint(ocspResp, nil)
+	if err != nil {
+		return fmt.Errorf("Error parsing OCSP response: %w", err)
+	}
+
+	return nil
 }
 
-func createOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string) *http.Request {
-	// not sure what to do if there are multiple here
-	// make a request for each?
-	ocspURL := rootCert.OCSPServer[0]
+func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
+	reqMethod := http.MethodGet
+	if isPost {
+		reqMethod = http.MethodPost
+	}
 
-	// TODO: Look into Request Options
-	ocspReq, err := ocsp.CreateRequest(rootCert, issuerCert, &ocsp.RequestOptions{
-		Hash: crypto.SHA1,
-	})
+	ocspReq, issuerCert, err := ocsptools.CreateOCSPReqFromCert(certFile, ocspURL, reqMethod, hash)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("Error creating OCSP Request from certificate file: %w", err)
 	}
 
-	body := bytes.NewBuffer(ocspReq)
-
-	if reqType == http.MethodGet {
-		// Do I need to worry about line breaks?
-		enc := base64.StdEncoding.EncodeToString(ocspReq)
-		ocspURL += "/" + enc
-		body = bytes.NewBuffer(nil) // body = nil runs into errors
-	}
-
-	httpReq, err := http.NewRequest(reqType, ocspURL, body)
+	ocspResp, err := ocsptools.GetOCSPResponse(ocspReq)
 	if err != nil {
-		panic(err.Error())
+		return fmt.Errorf("Error getting OCSP Response from certificate file: %w", err)
 	}
 
-	httpReq.Header.Add("Content-Type", "application/ocsp-request")
-	httpReq.Header.Add("Accept", "application/ocsp-response")
+	return ocsptools.ParseAndLint(ocspResp, issuerCert)
 
-	return httpReq
 }
 
-func parseOCSPResp(ocspResp []byte, issuerCert *x509.Certificate) {
-	// ocsp.ParseResponse validates signature with issuerCert
-	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
+func checkFromURL(serverURL string, shouldPrint bool, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
+	tlsConn, err := createConn(serverURL)
 	if err != nil {
-		fmt.Println(string(ocspResp))
-		panic(err.Error())
-	}
-	linter.CheckOCSPResp(parsedResp)
-}
-
-func sendOCSPReq(rootCert *x509.Certificate, issuerCert *x509.Certificate, reqType string, dir string) {
-	httpReq := createOCSPReq(rootCert, issuerCert, reqType)
-
-	httpClient := &http.Client{}
-	httpResp, err := httpClient.Do(httpReq)
-	if err != nil {
-		panic(err.Error())
+		return err
 	}
 
-	defer httpResp.Body.Close()
-	ocspResp, err := ioutil.ReadAll(httpResp.Body)
-	if err != nil {
-		// if HTTP 405 results from GET request, need to say that's a lint
-		panic(err.Error())
-	}
+	certChain := tlsConn.ConnectionState().PeerCertificates
+	leafCert := certChain[0]
+	issuerCert := certChain[1]
 
-	if dir != "" {
-		err := ioutil.WriteFile(dir, ocspResp, 0644)
+	if shouldPrint {
+		err = ocsptools.PrintCert(leafCert)
 		if err != nil {
-			panic("Error writing to file: " + err.Error())
+			return fmt.Errorf("Error printing certificate: %w", err)
 		}
 	}
 
-	parseOCSPResp(ocspResp, issuerCert)
+	ocspResp := tlsConn.OCSPResponse()
+	tlsConn.Close()
+
+	if ocspResp == nil {
+		fmt.Println("No OCSP response stapled")
+
+		reqMethod := http.MethodGet
+		if isPost {
+			reqMethod = http.MethodPost
+		}
+
+		ocspReq, err := ocsptools.CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+		if err != nil {
+			return fmt.Errorf("Error creating OCSP Request: %w", err)
+		}
+
+		ocspResp, err = ocsptools.GetOCSPResponse(ocspReq)
+		if err != nil {
+			return fmt.Errorf("Error getting OCSP Response: %w", err)
+		}
+
+		if dir != "" {
+			err := ioutil.WriteFile(dir, ocspResp, 0644)
+			if err != nil {
+				return fmt.Errorf("Error writing OCSP Response to file %s: %w", dir, err)
+			}
+		}
+
+		return ocsptools.ParseAndLint(ocspResp, issuerCert)
+	} else {
+		fmt.Println("Stapled OCSP Response")
+		return ocsptools.ParseAndLint(ocspResp, issuerCert)
+	}
 }
 
+// main parses the users commandline arguments & flags and then runs the appropriate functions
 func main() {
-	print := flag.Bool("print", false, "Whether to print certificate or not")
-	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")
-	reqType := flag.String("type", http.MethodPost, "Whether to use GET or POST for OCSP request")
-	in := flag.Bool("in", false, "Whether to read in an OCSP Response or not")
+	// TODO: extract flag descriptions into constants?
+	inresp := flag.Bool("inresp", false, "Whether to read in an OCSP responses or not")
+	incert := flag.Bool("incert", false, "Whether to read in certificate files or not")
+	ocspurl := flag.String("ocspurl", "", "User provided OCSP url, default fetch from certificate")
+	shouldPrint := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
+	isPost := flag.Bool("post", false, "Whether to use POST for OCSP request")
+	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")	
 
 	flag.Parse()
 
-	if *in {
-		respFiles := flag.Args()
+	if *inresp && *incert {
+		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
+	}
 
+	if *inresp {
+		respFiles := flag.Args()
 		for _, respFile := range respFiles {
-			ocspResp, err := ioutil.ReadFile(respFile)
+			err := checkFromFile(respFile)
 			if err != nil {
-				panic("Error reading file: " + err.Error())
+				panic(fmt.Errorf("Error checking OCSP Response file %s: %w", respFile, err).Error())
 			}
-			// can't check signature w/o outside knowledge of who the issuer should be
-			// TODO: add functionality so user can specify who the issuer is
-			parseOCSPResp(ocspResp, nil)
+		}
+	} else if *incert {
+		certFiles := flag.Args()
+		for _, certFile := range certFiles {
+			err := checkFromCert(certFile, *isPost, *ocspurl, *dir, crypto.SHA1)
+			if err != nil {
+				panic(fmt.Errorf("Error checking certificate file %s: %w", certFile, err).Error())
+			}
 		}
 	} else {
-		certURLs := flag.Args()
+		serverURLs := flag.Args()
 
-		for _, certURL := range certURLs {
-			tlsConn := createConn(certURL)
-
-			// TODO: Print certificates to directory
-			certChain := tlsConn.ConnectionState().PeerCertificates
-			rootCert := certChain[0]
-			issuerCert := certChain[len(certChain)-1]
-
-			if *print {
-				printCert(rootCert)
+		for _, serverURL := range serverURLs {
+			err := checkFromURL(serverURL, *shouldPrint, *isPost, *ocspurl, *dir, crypto.SHA256)
+			if err == nil {
+				return
 			}
-
-			ocspResp := tlsConn.OCSPResponse()
-
-			if ocspResp == nil {
-				fmt.Println("No OCSP response stapled")
-				sendOCSPReq(rootCert, issuerCert, *reqType, *dir)
-			} else {
-				fmt.Println("Stapled OCSP Response")
-				parseOCSPResp(ocspResp, issuerCert)
+			fmt.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
+			err = checkFromURL(serverURL, *shouldPrint, *isPost, *ocspurl, *dir, crypto.SHA1)
+			if err != nil {
+				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
 			}
-
-			tlsConn.Close()
 		}
 	}
 }
