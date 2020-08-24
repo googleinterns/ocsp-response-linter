@@ -1,12 +1,12 @@
 package ocsptools
 
 import (
-	"../linter"
 	"bytes"
 	"crypto"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/grantae/certinfo"
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"

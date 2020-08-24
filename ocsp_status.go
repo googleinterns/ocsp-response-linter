@@ -2,11 +2,11 @@
 package main
 
 import (
-	"./ocsptools"
 	"crypto"
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/googleinterns/ocsp-response-linter/ocsptools"
 	"io/ioutil"
 	"net/http"
 )
