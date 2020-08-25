@@ -4,7 +4,7 @@ import (
 	"testing"
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
-	"../linter"
+	"github.com/googleinterns/ocsp-response-linter/linter"
 	"fmt"
 	"time"
 )

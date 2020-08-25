@@ -1,16 +1,22 @@
 package ocsptools
 
 import (
-	"../linter"
 	"bytes"
 	"crypto"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/grantae/certinfo"
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"net/http"
+	"time"
+)
+
+const (
+	RespTimeLimit = "10s"
+	TimeoutInSeconds = 20
 )
 
 // printCert prints the givern certificate using the external library github.com/grantae/certinfo
@@ -24,21 +30,29 @@ func PrintCert(cert *x509.Certificate) error {
 }
 
 func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
-	resp, err := http.Get(issuerURL)
+	httpReq, err := http.NewRequest(http.MethodGet, issuerURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error creating http request: %w", err)
+	}
+
+	httpClient := &http.Client{
+		Timeout: TimeoutInSeconds * time.Second,
+	}
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("Error sending http request: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	cert, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error reading http response body: %w", err)
 	}
 
 	parsedCert, err := x509.ParseCertificate(cert)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error parsing certificate: %w", err)
 	}
 
 	return parsedCert, nil
@@ -98,7 +112,7 @@ func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, ha
 	issuerURL := parsedCert.IssuingCertificateURL[0]
 	issuerCert, err := GetCertFromIssuerURL(issuerURL)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error getting certificate from issuer url: %w", err)
+		return nil, nil, fmt.Errorf("Error getting certificate from issuer url %s: %w", issuerURL, err)
 	}
 
 	ocspReq, err := CreateOCSPReq(ocspURL, parsedCert, issuerCert, reqMethod, hash)
@@ -111,10 +125,25 @@ func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, ha
 
 // getOCSPResponse constructs and sends an OCSP request then returns the OCSP response
 func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
-	httpClient := &http.Client{}
+	startTime := time.Now()
+
+	httpClient := &http.Client{
+		Timeout: TimeoutInSeconds * time.Second,
+	}
 	httpResp, err := httpClient.Do(ocspReq)
 	if err != nil {
 		return nil, fmt.Errorf("Error sending http request: %w", err)
+	}
+
+	endTime := time.Now()
+	limit, err := time.ParseDuration(RespTimeLimit)
+	if err != nil {
+		panic(err.Error()) // error really shouldn't happen
+	}
+
+	// Verification (source from Apple Lint 08)
+	if (endTime.Sub(startTime) > limit) {
+		fmt.Printf("Server took longer than %s to respond \n", RespTimeLimit)
 	}
 
 	defer httpResp.Body.Close()
@@ -133,6 +162,6 @@ func ParseAndLint(ocspResp []byte, issuerCert *x509.Certificate) error {
 		fmt.Println(string(ocspResp)) // for debugging, will remove
 		return fmt.Errorf("Error parsing OCSP response: %w", err)
 	}
-	linter.CheckOCSPResp(parsedResp)
+	linter.LintOCSPResp(parsedResp)
 	return nil
 }
