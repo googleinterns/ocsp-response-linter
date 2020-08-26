@@ -98,11 +98,11 @@ func GetIssuerCertFromLeafCert(leafCert *x509.Certificate) (*x509.Certificate, e
 // hash is the hash to use to encode the request (either SHA1 or SHA256 right now)
 func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*http.Request, error) {
 	if ocspURL == "" {
-		// leafCert probably is an intermediary, which may not be required to have an OCSP resonder
+		// leafCert probably is an intermediary, which may not be required to have an OCSP responder
 		if len(leafCert.OCSPServer) == 0 {
 			return nil, fmt.Errorf("Certificate does not have an OCSP server")
 		}
-		ocspURL = leafCert.OCSPServer[0]
+		ocspURL = leafCert.OCSPServer[0] // URL of OCSP Responder for this certificate
 	}
 
 	ocspReq, err := ocsp.CreateRequest(leafCert, issuerCert, &ocsp.RequestOptions{

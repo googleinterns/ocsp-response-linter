@@ -77,6 +77,7 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 	if err != nil {
 		return err
 	}
+	defer tlsConn.Close()
 
 	certChain := tlsConn.ConnectionState().PeerCertificates
 
@@ -100,7 +101,6 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 	}
 
 	ocspResp := tlsConn.OCSPResponse()
-	tlsConn.Close()
 
 	if ocspResp == nil || noStaple {
 		reqMethod := http.MethodGet

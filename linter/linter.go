@@ -9,7 +9,7 @@ var StatusIntMap = map[int]string {
 	ocsp.Good: "good",
 	ocsp.Revoked: "revoked",
 	ocsp.Unknown: "unknown",
-	// ocsp.SeverFailed is never used
+	// ocsp.SeverFailed is never used: godoc.org/golang.org/x/crypto/ocsp#pkg-constants
 }
 
 type LintStruct struct {
