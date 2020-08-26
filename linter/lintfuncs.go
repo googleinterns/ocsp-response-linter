@@ -19,7 +19,7 @@ func LintProducedAtDate(resp *ocsp.Response) error {
 		return err
 	}
 	if time.Since(resp.ProducedAt) > limit {
-		return fmt.Errorf("OCSP Response producedAt date is more than %s in the past", ProducedAtLimit)
+		return fmt.Errorf("OCSP Response producedAt date, %s, is more than %s in the past", resp.ProducedAt, ProducedAtLimit)
 	}
 	return nil
 }
@@ -32,7 +32,7 @@ func LintThisUpdateDate(resp *ocsp.Response) error {
 		return err
 	}
 	if time.Since(resp.ThisUpdate) > limit {
-		return fmt.Errorf("OCSP Response thisUpdate date is more than %s in the past", ThisUpdateLimit)
+		return fmt.Errorf("OCSP Response thisUpdate date, %s, is more than %s in the past", resp.ThisUpdate, ThisUpdateLimit)
 	}
 	return nil
 }
