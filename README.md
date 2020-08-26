@@ -16,7 +16,7 @@ The OCSP Response Linter allows users to specify three different types of input.
 
 `./ocsp_status [url1] [url2] ...`
 
-The second method is to supply ASN.1 DER encoded certificate file(s) that should be sent to an OCSP responder
+The second method is to supply ASN.1 DER encoded certificate file(s) that should be sent to an OCSP responder. Please note that the certificate must contain the issuer certificate URL or else the tool will not be able to generate the OCSP request.
 
 `./ocsp_status -incert [certfile1] [certfile2] ...`
 
@@ -32,6 +32,7 @@ A complete table of available flags:
 | --------| ------------------------------------------------------| ---------------------------------------------------------- |
 | inresp  | Read in OCSP response(s) files                        | `./ocsp_status -inresp resps/google_resp` |
 | incert  | Read in certificate files (must be ASN.1 DER encoded) | `./ocsp_status -incert certs/google_cert.der` |
-| ocspurl | Specify the url to send the OCSP request to           | `./ocsp_status -ocspurl=http://ocsp.pki.goog/gts1o1core google.com:443`
-| post    | Use POST to send the OCSP request (instead of GET)    | `./ocsp_status -post google.com:443`
+| ocspurl | Specify the url to send the OCSP request to           | `./ocsp_status -ocspurl=http://ocsp.pki.goog/gts1o1core google.com:443` |
+| post    | Use POST to send the OCSP request (instead of GET)    | `./ocsp_status -post google.com:443` |
 | dir     | Write the OCSP response to a file                     | `./ocsp_status -dir=resps/google_resp google.com:443`|
+| nostaple| Don't use the stapled OCSP response (only use with server URLs) | `./ocsp_status -nostaple google.com:443` |
