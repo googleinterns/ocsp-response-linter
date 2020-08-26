@@ -11,18 +11,6 @@ import (
 	"net/http"
 )
 
-// createConn takes a provided server URL and attempts to establish a TLS connection with it
-func createConn(serverURL string) (*tls.Conn, error) {
-	config := &tls.Config{}
-
-	tlsConn, err := tls.Dial("tcp", serverURL, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
-	}
-
-	return tlsConn, nil
-}
-
 // checkFromFile takes a path to an OCSP Response file and then reads, parses, and lints it
 func checkFromFile(respFile string) error {
 	ocspResp, err := ioutil.ReadFile(respFile)
@@ -73,10 +61,13 @@ func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, has
 // checkFromURL takes a server URL and constructs and sends an OCSP request to check that URL's certificate
 // then parses and lints the OCSP response
 func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
-	tlsConn, err := createConn(serverURL)
+	config := &tls.Config{}
+
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to %s: %w", serverURL, err)
 	}
+
 	defer tlsConn.Close()
 
 	certChain := tlsConn.ConnectionState().PeerCertificates
