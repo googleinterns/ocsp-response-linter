@@ -11,18 +11,7 @@ import (
 	"net/http"
 )
 
-// createConn takes a provided server URL and attempts to establish a TLS connection with it
-func createConn(serverURL string) (*tls.Conn, error) {
-	config := &tls.Config{}
-
-	tlsConn, err := tls.Dial("tcp", serverURL, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
-	}
-
-	return tlsConn, nil
-}
-
+// checkFromFile takes a path to an OCSP Response file and then reads, parses, and lints it
 func checkFromFile(respFile string) error {
 	ocspResp, err := ioutil.ReadFile(respFile)
 	if err != nil {
@@ -38,35 +27,68 @@ func checkFromFile(respFile string) error {
 	return nil
 }
 
+// checkFromCert takes a path to an ASN.1 DER encoded certificate file and
+// constructs and sends an OCSP request then parses and lints the OCSP response
 func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
 	reqMethod := http.MethodGet
 	if isPost {
 		reqMethod = http.MethodPost
 	}
 
-	ocspReq, issuerCert, err := ocsptools.CreateOCSPReqFromCert(certFile, ocspURL, reqMethod, hash)
+	leafCert, err := ocsptools.ParseCertificateFile(certFile)
 	if err != nil {
-		return fmt.Errorf("Error creating OCSP Request from certificate file: %w", err)
+		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
+	}
+
+	issuerCert, err := ocsptools.GetIssuerCertFromLeafCert(leafCert)
+	if err != nil {
+		return fmt.Errorf("Error getting issuer certificate from certificate: %w", err)
+	}
+
+	ocspReq, err := ocsptools.CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+	if err != nil {
+		return fmt.Errorf("Error creating OCSP Request: %w", err)
 	}
 
 	ocspResp, err := ocsptools.GetOCSPResponse(ocspReq)
 	if err != nil {
-		return fmt.Errorf("Error getting OCSP Response from certificate file: %w", err)
+		return fmt.Errorf("Error getting OCSP Response: %w", err)
 	}
 
 	return ocsptools.ParseAndLint(ocspResp, issuerCert)
-
 }
 
-func checkFromURL(serverURL string, shouldPrint bool, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
-	tlsConn, err := createConn(serverURL)
+// checkFromURL takes a server URL and constructs and sends an OCSP request to
+// check that URL's certificate then parses and lints the OCSP response
+func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
+	config := &tls.Config{}
+
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to %s: %w", serverURL, err)
 	}
 
-	certChain := tlsConn.ConnectionState().PeerCertificates
-	leafCert := certChain[0]
-	issuerCert := certChain[1]
+	defer tlsConn.Close()
+
+	// shouldn't happen since Config.InsecureSkipVerify is false, just being overly careful
+	if len(tlsConn.ConnectionState().VerifiedChains) == 0 {
+		return fmt.Errorf("No verified chain from sever to system root certificates")
+	}
+
+	certChain := tlsConn.ConnectionState().VerifiedChains[0]
+
+	
+	if len(certChain) == 0 {
+		// Certificate chain should never be empty but just being overly careful
+		return fmt.Errorf("No certificate present for %s", serverURL)
+	} else if len(certChain) == 1 {
+		// Server should never send a root certificate but just being overly careful
+		return fmt.Errorf("Certificate for %s is a root certificate", serverURL)
+	}
+
+	// else
+	leafCert := certChain[0] // the certificate we want to send to the CA
+	issuerCert := certChain[1] // the certificate of the issuer of the leaf cert
 
 	if shouldPrint {
 		err = ocsptools.PrintCert(leafCert)
@@ -76,11 +98,8 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, ocspURL strin
 	}
 
 	ocspResp := tlsConn.OCSPResponse()
-	tlsConn.Close()
 
-	if ocspResp == nil {
-		fmt.Println("No OCSP response stapled")
-
+	if ocspResp == nil || noStaple {
 		reqMethod := http.MethodGet
 		if isPost {
 			reqMethod = http.MethodPost
@@ -118,7 +137,8 @@ func main() {
 	ocspurl := flag.String("ocspurl", "", "User provided OCSP url, default fetch from certificate")
 	shouldPrint := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
 	isPost := flag.Bool("post", false, "Whether to use POST for OCSP request")
-	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")	
+	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")
+	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")	
 
 	flag.Parse()
 
@@ -127,6 +147,7 @@ func main() {
 	}
 
 	if *inresp {
+		// reading in OCSP response files
 		respFiles := flag.Args()
 		for _, respFile := range respFiles {
 			err := checkFromFile(respFile)
@@ -135,6 +156,7 @@ func main() {
 			}
 		}
 	} else if *incert {
+		// reading in certificate files
 		certFiles := flag.Args()
 		for _, certFile := range certFiles {
 			err := checkFromCert(certFile, *isPost, *ocspurl, *dir, crypto.SHA1)
@@ -143,15 +165,17 @@ func main() {
 			}
 		}
 	} else {
+		// reading in server URLs
 		serverURLs := flag.Args()
 
 		for _, serverURL := range serverURLs {
-			err := checkFromURL(serverURL, *shouldPrint, *isPost, *ocspurl, *dir, crypto.SHA256)
+			err := checkFromURL(serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA256)
 			if err == nil {
 				return
 			}
 			fmt.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
-			err = checkFromURL(serverURL, *shouldPrint, *isPost, *ocspurl, *dir, crypto.SHA1)
+			fmt.Println("Sending OCSP Request encoded with SHA1")
+			err = checkFromURL(serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
 			}

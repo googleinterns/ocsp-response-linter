@@ -19,7 +19,7 @@ const (
 	TimeoutInSeconds = 20
 )
 
-// printCert prints the givern certificate using the external library github.com/grantae/certinfo
+// PrintCert prints the given certificate using the external library github.com/grantae/certinfo
 func PrintCert(cert *x509.Certificate) error {
 	result, err := certinfo.CertificateText(cert)
 	if err != nil {
@@ -29,6 +29,23 @@ func PrintCert(cert *x509.Certificate) error {
 	return nil
 }
 
+// ParseCertificateFile takes a path to a certificate and returns a parsed certificate
+func ParseCertificateFile(certFile string) (*x509.Certificate, error) {
+	cert, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading certificate file: %w", err)
+	}
+
+	parsedCert, err := x509.ParseCertificate(cert)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing certificate file: %w", err)
+	}
+
+	return parsedCert, nil
+}
+
+// GetCertFromIssuerURL takes an issuerURL and sends a GET request to the URL to retrieve its certificate
+// Assumes that sending a GET request to the provided URL will return its certificate
 func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
 	httpReq, err := http.NewRequest(http.MethodGet, issuerURL, nil)
 	if err != nil {
@@ -58,13 +75,35 @@ func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
 	return parsedCert, nil
 }
 
-// createOCSPReq creates an OCSP request using either GET or POST (see IETF RFC 6960)
+// GetIssuerCertFromLeafCert takes in a leaf certificate, reads its issuing certificate url field
+// and then calls GetCertFromIssuerURL to return the issuer certificate
+func GetIssuerCertFromLeafCert(leafCert *x509.Certificate) (*x509.Certificate, error) {
+	if len(leafCert.IssuingCertificateURL) == 0 {
+		return nil, fmt.Errorf("Certificate has no issuing certificate url field")
+	}
+
+	issuerURL := leafCert.IssuingCertificateURL[0]
+	issuerCert, err := GetCertFromIssuerURL(issuerURL)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting certificate from issuer url %s: %w", issuerURL, err)
+	}
+
+	return issuerCert, nil
+}
+
+// CreateOCSPReq creates an OCSP request using either GET or POST (see IETF RFC 6960)
 // leafCert is the root certificate (first certificate in the chain)
-// issuerCert is the last certificate in the chain
-// reqMethod is either GET or POST (TODO: change reqMethod to not be string)
+// issuerCert is the certificate of the issuer of the leafCert
+// reqMethod is either GET or POST
+// hash is the hash to use to encode the request (either SHA1 or SHA256 right now)
 func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*http.Request, error) {
 	if ocspURL == "" {
-		ocspURL = leafCert.OCSPServer[0]
+		// leafCert probably is an intermediary
+		// may not be required to have an OCSP responder
+		if len(leafCert.OCSPServer) == 0 {
+			return nil, fmt.Errorf("Certificate does not have an OCSP server")
+		}
+		ocspURL = leafCert.OCSPServer[0] // URL of OCSP Responder for this certificate
 	}
 
 	ocspReq, err := ocsp.CreateRequest(leafCert, issuerCert, &ocsp.RequestOptions{
@@ -94,36 +133,8 @@ func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.
 	return httpReq, nil
 }
 
-func CreateOCSPReqFromCert(certFile string, ocspURL string, reqMethod string, hash crypto.Hash) (*http.Request, *x509.Certificate, error) {
-	cert, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error reading certificate file: %w", err)
-	}
-
-	parsedCert, err := x509.ParseCertificate(cert)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error parsing certificate file: %w", err)
-	}
-
-	if len(parsedCert.IssuingCertificateURL) == 0 {
-		return nil, nil, fmt.Errorf("Certificate read from file %s has no issuing certificate url", certFile)
-	}
-
-	issuerURL := parsedCert.IssuingCertificateURL[0]
-	issuerCert, err := GetCertFromIssuerURL(issuerURL)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error getting certificate from issuer url %s: %w", issuerURL, err)
-	}
-
-	ocspReq, err := CreateOCSPReq(ocspURL, parsedCert, issuerCert, reqMethod, hash)
-	if err != nil {
-		return nil, issuerCert, fmt.Errorf("Error creating OCSP request from certificate file: %w", err)
-	}
-
-	return ocspReq, issuerCert, nil
-}
-
-// getOCSPResponse constructs and sends an OCSP request then returns the OCSP response
+// GetOCSPResponse takes an OCSP request in the form of an HTTP request sends it and returns the response
+// It also times the response time, and if it's over 10 seconds, then it has failed a verification
 func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
 	startTime := time.Now()
 
@@ -156,6 +167,7 @@ func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
 	return ocspResp, nil
 }
 
+// ParseAndLint placeholder comment, this function will probably get changed or removed
 func ParseAndLint(ocspResp []byte, issuerCert *x509.Certificate) error {
 	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 	if err != nil {
