@@ -13,8 +13,8 @@ const (
 	TestRespDates = "./test-resps/oldfbresp"
 )
 
-// TestLintProducedAtDate tests linter.LintProducedAtDate, which checks that an OCSP Response ProducedAt date
-// is no more than linter.ProducedAtLimit in the past
+// TestLintProducedAtDate tests linter.LintProducedAtDate, which checks that an
+// OCSP Response ProducedAt date is no more than linter.ProducedAtLimit in the past
 // Source: Apple Lint 03
 func TestLintProducedAtDate(t *testing.T) {
 	ocsp_resp, err := ioutil.ReadFile(TestRespDates)
@@ -42,8 +42,8 @@ func TestLintProducedAtDate(t *testing.T) {
     }
 }
 
-// TestLintThisUpdateDate tests linter.LintThisUpdateDate, which checks that an OCSP Response ThisUpdate date
-// is no more than linter.ThisUpdateLimit in the past
+// TestLintThisUpdateDate tests linter.LintThisUpdateDate, which checks that an 
+// OCSP Response ThisUpdate date is no more than linter.ThisUpdateLimit in the past
 // Source: Apple Lint 03
 func TestLintThisUpdateDate(t *testing.T) {
 	ocsp_resp, err := ioutil.ReadFile(TestRespDates)

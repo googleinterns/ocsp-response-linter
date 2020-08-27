@@ -27,8 +27,8 @@ func checkFromFile(respFile string) error {
 	return nil
 }
 
-// checkFromCert takes a path to an ASN.1 DER encoded certificate file and constructs and sends an OCSP request
-// then parses and lints the OCSP response
+// checkFromCert takes a path to an ASN.1 DER encoded certificate file and
+// constructs and sends an OCSP request then parses and lints the OCSP response
 func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
 	reqMethod := http.MethodGet
 	if isPost {
@@ -58,8 +58,8 @@ func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, has
 	return ocsptools.ParseAndLint(ocspResp, issuerCert)
 }
 
-// checkFromURL takes a server URL and constructs and sends an OCSP request to check that URL's certificate
-// then parses and lints the OCSP response
+// checkFromURL takes a server URL and constructs and sends an OCSP request to
+// check that URL's certificate then parses and lints the OCSP response
 func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
 	config := &tls.Config{}
 
@@ -70,13 +70,19 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 
 	defer tlsConn.Close()
 
-	certChain := tlsConn.ConnectionState().PeerCertificates
+	// shouldn't happen since Config.InsecureSkipVerify is false, just being overly careful
+	if len(tlsConn.ConnectionState().VerifiedChains) == 0 {
+		return fmt.Errorf("No verified chain from sever to root certificates")
+	}
 
+	certChain := tlsConn.ConnectionState().VerifiedChains[0]
+
+	// Certificate chain should never be empty but just being overly careful
 	if len(certChain) == 0 {
 		return fmt.Errorf("No certificate present for %s", serverURL)
 	}
 
-	// Is this right?
+	// Server should never send a root certificate but just being overly careful
 	if len(certChain) == 1 {
 		return fmt.Errorf("Certificate for %s is a root certificate", serverURL)
 	}
@@ -140,7 +146,8 @@ func main() {
 		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
 	}
 
-	if *inresp { // reading in OCSP response files
+	if *inresp {
+		// reading in OCSP response files
 		respFiles := flag.Args()
 		for _, respFile := range respFiles {
 			err := checkFromFile(respFile)
@@ -148,7 +155,8 @@ func main() {
 				panic(fmt.Errorf("Error checking OCSP Response file %s: %w", respFile, err).Error())
 			}
 		}
-	} else if *incert { // reading in certificate files
+	} else if *incert {
+		// reading in certificate files
 		certFiles := flag.Args()
 		for _, certFile := range certFiles {
 			err := checkFromCert(certFile, *isPost, *ocspurl, *dir, crypto.SHA1)
@@ -156,7 +164,8 @@ func main() {
 				panic(fmt.Errorf("Error checking certificate file %s: %w", certFile, err).Error())
 			}
 		}
-	} else { // reading in server URLs
+	} else {
+		// reading in server URLs
 		serverURLs := flag.Args()
 
 		for _, serverURL := range serverURLs {
