@@ -2,13 +2,17 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/googleinterns/ocsp-response-linter)](https://goreportcard.com/report/github.com/googleinterns/ocsp-response-linter)
 
-OCSP Response Linter is a command line tool for fetching as well as linting and verifying OCSP responses.
+OCSP Response Linter is a command line tool for fetching, linting, and verifying OCSP responses.
 
 **This is not an officially supported Google product.**
 
 ## Lints and Verifications Sources
 
-The lints and verifications implemented come primarily from [Apple's OCSP Lints and Test Cases](bug1588001.bmoattachments.org/attachment.cgi?id=9160540) and IETF standards set out in [RFC 6960](tools.ietf.org/html/rfc6960)
+We distinguish between lints and verifications as follows: 
+- A lint is a requirement that can be checked using only the OCSP response (e.g. ensuring that the producedAt date field of a response is no more than four days in the past)
+- A verification is a requirement that necessitates querying an outside service and may run while in the process of fetching the OCSP Response (e.g. checking that an OCSP response is delivered in 10 seconds after sending the request)
+
+The lints and verifications implemented come primarily from [Apple's OCSP Lints and Test Cases](bug1588001.bmoattachments.org/attachment.cgi?id=9160540) and IETF standards set out in [RFC 6960](tools.ietf.org/html/rfc6960).
 
 ## Usage
 
@@ -16,7 +20,7 @@ The OCSP Response Linter allows users to specify three different types of input.
 
 `./ocsp_status [url1] [url2] ...`
 
-The second method is to supply ASN.1 DER encoded certificate file(s) that should be sent to an OCSP responder. Please note that the certificate must contain the issuer certificate URL or else the tool will not be able to generate the OCSP request.
+The second method is to supply ASN.1 DER encoded certificate file(s) that should be sent to an OCSP responder. Please note that the certificate must contain an OCSP responder URL and issuer certificate URL or else the tool will not be able to generate the OCSP request.
 
 `./ocsp_status -incert [certfile1] [certfile2] ...`
 
