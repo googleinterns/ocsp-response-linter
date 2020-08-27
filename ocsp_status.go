@@ -72,7 +72,7 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 
 	// shouldn't happen since Config.InsecureSkipVerify is false, just being overly careful
 	if len(tlsConn.ConnectionState().VerifiedChains) == 0 {
-		return fmt.Errorf("No verified chain from sever to root certificates")
+		return fmt.Errorf("No verified chain from sever to system root certificates")
 	}
 
 	certChain := tlsConn.ConnectionState().VerifiedChains[0]
