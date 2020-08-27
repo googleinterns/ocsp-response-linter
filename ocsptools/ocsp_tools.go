@@ -19,7 +19,7 @@ const (
 	TimeoutInSeconds = 20
 )
 
-// PrintCert prints the givern certificate using the external library github.com/grantae/certinfo
+// PrintCert prints the given certificate using the external library github.com/grantae/certinfo
 func PrintCert(cert *x509.Certificate) error {
 	result, err := certinfo.CertificateText(cert)
 	if err != nil {

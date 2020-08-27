@@ -77,16 +77,16 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 
 	certChain := tlsConn.ConnectionState().VerifiedChains[0]
 
-	// Certificate chain should never be empty but just being overly careful
+	
 	if len(certChain) == 0 {
+		// Certificate chain should never be empty but just being overly careful
 		return fmt.Errorf("No certificate present for %s", serverURL)
-	}
-
-	// Server should never send a root certificate but just being overly careful
-	if len(certChain) == 1 {
+	} else if len(certChain) == 1 {
+		// Server should never send a root certificate but just being overly careful
 		return fmt.Errorf("Certificate for %s is a root certificate", serverURL)
 	}
 
+	// else
 	leafCert := certChain[0] // the certificate we want to send to the CA
 	issuerCert := certChain[1] // the certificate of the issuer of the leaf cert
 
