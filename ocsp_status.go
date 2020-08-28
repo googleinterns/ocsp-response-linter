@@ -6,23 +6,20 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/googleinterns/ocsp-response-linter/ocsptools"
-	"io/ioutil"
+	"golang.org/x/crypto/ocsp"
 	"net/http"
 )
 
 // checkFromFile takes a path to an OCSP Response file and then reads, parses, and lints it
 func checkFromFile(respFile string) error {
-	ocspResp, err := ioutil.ReadFile(respFile)
+	ocspResp, err := ocsptools.ReadOCSPResp(respFile)
 	if err != nil {
-		return fmt.Errorf("Error reading OCSP response file: %w", err)
+		return err
 	}
-	// can't check signature w/o outside knowledge of who the issuer should be
-	// TODO: add functionality so user can specify who the issuer is
-	err = ocsptools.ParseAndLint(ocspResp, nil)
-	if err != nil {
-		return fmt.Errorf("Error parsing OCSP response: %w", err)
-	}
+	
+	linter.LintOCSPResp(ocspResp)
 
 	return nil
 }
@@ -45,17 +42,14 @@ func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, has
 		return fmt.Errorf("Error getting issuer certificate from certificate: %w", err)
 	}
 
-	ocspReq, err := ocsptools.CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+	ocspResp, err := ocsptools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 	if err != nil {
-		return fmt.Errorf("Error creating OCSP Request: %w", err)
+		return fmt.Errorf("Error fetching OCSP response: %w", err)
 	}
 
-	ocspResp, err := ocsptools.GetOCSPResponse(ocspReq)
-	if err != nil {
-		return fmt.Errorf("Error getting OCSP Response: %w", err)
-	}
+	linter.LintOCSPResp(ocspResp)
 
-	return ocsptools.ParseAndLint(ocspResp, issuerCert)
+	return nil
 }
 
 // checkFromURL takes a server URL and constructs and sends an OCSP request to
@@ -77,7 +71,6 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 
 	certChain := tlsConn.ConnectionState().VerifiedChains[0]
 
-	
 	if len(certChain) == 0 {
 		// Certificate chain should never be empty but just being overly careful
 		return fmt.Errorf("No certificate present for %s", serverURL)
@@ -105,28 +98,24 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 			reqMethod = http.MethodPost
 		}
 
-		ocspReq, err := ocsptools.CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+		ocspResp, err := ocsptools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 		if err != nil {
-			return fmt.Errorf("Error creating OCSP Request: %w", err)
+			return fmt.Errorf("Error fetching OCSP response: %w", err)
 		}
 
-		ocspResp, err = ocsptools.GetOCSPResponse(ocspReq)
-		if err != nil {
-			return fmt.Errorf("Error getting OCSP Response: %w", err)
-		}
-
-		if dir != "" {
-			err := ioutil.WriteFile(dir, ocspResp, 0644)
-			if err != nil {
-				return fmt.Errorf("Error writing OCSP Response to file %s: %w", dir, err)
-			}
-		}
-
-		return ocsptools.ParseAndLint(ocspResp, issuerCert)
+		linter.LintOCSPResp(ocspResp)
 	} else {
 		fmt.Println("Stapled OCSP Response")
-		return ocsptools.ParseAndLint(ocspResp, issuerCert)
+
+		parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
+		if err != nil {
+			return fmt.Errorf("Error parsing OCSP response: %w", err)
+		}
+
+		linter.LintOCSPResp(parsedResp)
 	}
+
+	return nil
 }
 
 // main parses the users commandline arguments & flags and then runs the appropriate functions

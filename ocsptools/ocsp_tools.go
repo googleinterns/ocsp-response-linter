@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/grantae/certinfo"
 	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
@@ -27,6 +26,20 @@ func PrintCert(cert *x509.Certificate) error {
 	}
 	fmt.Print(result)
 	return nil
+}
+
+// ReadOCSPResp takes a path to an OCSP response file and reads and parses it
+func ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
+	ocsp_resp, err := ioutil.ReadFile(ocspRespFile)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading file: %w", err)
+	}
+	parsed_resp, err := ocsp.ParseResponse(ocsp_resp, nil)
+	if err != nil {
+    	return nil, fmt.Errorf("Error parsing OCSP Response: %w", err)
+    }
+
+    return parsed_resp, err
 }
 
 // ParseCertificateFile takes a path to a certificate and returns a parsed certificate
@@ -133,9 +146,9 @@ func CreateOCSPReq(ocspURL string, leafCert *x509.Certificate, issuerCert *x509.
 	return httpReq, nil
 }
 
-// GetOCSPResponse takes an OCSP request in the form of an HTTP request sends it and returns the response
+// GetOCSPResp takes an OCSP request in the form of an HTTP request sends it and returns the response
 // It also times the response time, and if it's over 10 seconds, then it has failed a verification
-func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
+func GetOCSPResp(ocspReq *http.Request) ([]byte, error) {
 	startTime := time.Now()
 
 	httpClient := &http.Client{
@@ -167,13 +180,31 @@ func GetOCSPResponse(ocspReq *http.Request) ([]byte, error) {
 	return ocspResp, nil
 }
 
-// ParseAndLint placeholder comment, this function will probably get changed or removed
-func ParseAndLint(ocspResp []byte, issuerCert *x509.Certificate) error {
+// FetchOCSPResp uses the functions above to create and send an OCSP Request
+// and then parse the returned OCSP response
+// If dir is specified, it will also write the OCSP Response to dir
+func FetchOCSPResp(ocspURL string, dir string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*ocsp.Response, error) {
+	ocspReq, err := CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating OCSP Request: %w", err)
+	}
+
+	ocspResp, err := GetOCSPResp(ocspReq)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting OCSP Response: %w", err)
+	}
+
+	if dir != "" {
+		err := ioutil.WriteFile(dir, ocspResp, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("Error writing OCSP Response to file %s: %w", dir, err)
+		}
+	}
+
 	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 	if err != nil {
-		fmt.Println(string(ocspResp)) // for debugging, will remove
-		return fmt.Errorf("Error parsing OCSP response: %w", err)
+		return nil, fmt.Errorf("Error parsing OCSP response: %w", err)
 	}
-	linter.LintOCSPResp(parsedResp)
-	return nil
+
+	return parsedResp, nil
 }
