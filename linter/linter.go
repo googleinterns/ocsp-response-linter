@@ -1,7 +1,7 @@
 package linter
 
 import (
-	"fmt"
+	"log"
 	"golang.org/x/crypto/ocsp"
 )
 
@@ -35,17 +35,17 @@ var Lints = []LintStruct{
 // LintOCSPResp takes in a parsed OCSP response and prints its status
 // TODO: change function so that it returns a list of failed lints
 func LintOCSPResp(resp *ocsp.Response) {
-	fmt.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
+	log.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
 
-	fmt.Println("Linting OCSP Response...")
+	log.Println("Linting OCSP Response...")
 	for _, lint := range Lints {
-		fmt.Print(lint.info + ": ")
+		log.Print(lint.info + ": ")
 		err := lint.exec(resp)
 		if err == nil {
-			fmt.Println("passed")
+			log.Println("passed")
 		} else {
-			fmt.Println("failed: " + err.Error())
+			log.Println("failed: " + err.Error())
 		}
 	}
-	fmt.Println("Finished linting OCSP response")
+	log.Println("Finished linting OCSP response")
 }

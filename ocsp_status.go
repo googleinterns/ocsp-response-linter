@@ -9,6 +9,7 @@ import (
 	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/googleinterns/ocsp-response-linter/ocsptools"
 	"golang.org/x/crypto/ocsp"
+	"log"
 	"net/http"
 )
 
@@ -105,7 +106,7 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 
 		linter.LintOCSPResp(ocspResp)
 	} else {
-		fmt.Println("Stapled OCSP Response")
+		log.Println("Stapled OCSP Response")
 
 		parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 		if err != nil {
@@ -162,8 +163,8 @@ func main() {
 			if err == nil {
 				return
 			}
-			fmt.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
-			fmt.Println("Sending OCSP Request encoded with SHA1")
+			log.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
+			log.Println("Sending OCSP Request encoded with SHA1")
 			err = checkFromURL(serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
