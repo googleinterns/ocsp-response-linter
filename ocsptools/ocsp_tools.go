@@ -1,8 +1,11 @@
 package ocsptools
 
+//go:generate mockgen -source=ocsp_tools.go -destination=../mocks/mock_ocsptools.go -package=mocks
+
 import (
 	"bytes"
 	"crypto"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -18,6 +21,19 @@ const (
 	TimeoutInSeconds = 20
 )
 
+type ToolsInterface interface {
+	// PrintCert(*x509.Certificate) error
+	ReadOCSPResp(string) (*ocsp.Response, error)
+	ParseCertificateFile(string) (*x509.Certificate, error)
+	// GetCertFromIssuerURL(string) (*x509.Certificate, error)
+	GetIssuerCertFromLeafCert(*x509.Certificate) (*x509.Certificate, error)
+	// CreateOCSPReq(string, *x509.Certificate, *x509.Certificate, string, crypto.Hash) (*http.Request, error)
+	// GetOCSPResp(*http.Request) ([]byte, error)
+	FetchOCSPResp(string, string, *x509.Certificate, *x509.Certificate, string, crypto.Hash) (*ocsp.Response, error)
+}
+
+type Tools struct {}
+
 // PrintCert prints the given certificate using the external library github.com/grantae/certinfo
 func PrintCert(cert *x509.Certificate) error {
 	result, err := certinfo.CertificateText(cert)
@@ -29,7 +45,7 @@ func PrintCert(cert *x509.Certificate) error {
 }
 
 // ReadOCSPResp takes a path to an OCSP response file and reads and parses it
-func ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
+func (t Tools) ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
 	ocsp_resp, err := ioutil.ReadFile(ocspRespFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading file: %w", err)
@@ -43,7 +59,7 @@ func ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
 }
 
 // ParseCertificateFile takes a path to a certificate and returns a parsed certificate
-func ParseCertificateFile(certFile string) (*x509.Certificate, error) {
+func (t Tools) ParseCertificateFile(certFile string) (*x509.Certificate, error) {
 	cert, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading certificate file: %w", err)
@@ -90,7 +106,7 @@ func GetCertFromIssuerURL(issuerURL string) (*x509.Certificate, error) {
 
 // GetIssuerCertFromLeafCert takes in a leaf certificate, reads its issuing certificate url field
 // and then calls GetCertFromIssuerURL to return the issuer certificate
-func GetIssuerCertFromLeafCert(leafCert *x509.Certificate) (*x509.Certificate, error) {
+func (t Tools) GetIssuerCertFromLeafCert(leafCert *x509.Certificate) (*x509.Certificate, error) {
 	if len(leafCert.IssuingCertificateURL) == 0 {
 		return nil, fmt.Errorf("Certificate has no issuing certificate url field")
 	}
@@ -183,7 +199,7 @@ func GetOCSPResp(ocspReq *http.Request) ([]byte, error) {
 // FetchOCSPResp uses the functions above to create and send an OCSP Request
 // and then parse the returned OCSP response
 // If dir is specified, it will also write the OCSP Response to dir
-func FetchOCSPResp(ocspURL string, dir string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*ocsp.Response, error) {
+func (t Tools) FetchOCSPResp(ocspURL string, dir string, leafCert *x509.Certificate, issuerCert *x509.Certificate, reqMethod string, hash crypto.Hash) (*ocsp.Response, error) {
 	ocspReq, err := CreateOCSPReq(ocspURL, leafCert, issuerCert, reqMethod, hash)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating OCSP Request: %w", err)
@@ -207,4 +223,37 @@ func FetchOCSPResp(ocspURL string, dir string, leafCert *x509.Certificate, issue
 	}
 
 	return parsedResp, nil
+}
+
+// GetCertChain takes in a serverURL, attempts to build a tls connection to it
+// and returns the resulting certificate chain and stapled OCSP Response
+func GetCertChainAndStapledResp(serverURL string) ([]*x509.Certificate, []byte, error) {
+	config := &tls.Config{}
+
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
+	}
+
+	defer tlsConn.Close()
+
+	// shouldn't happen since Config.InsecureSkipVerify is false, just being overly careful
+	if len(tlsConn.ConnectionState().VerifiedChains) == 0 {
+		return nil, nil, fmt.Errorf("No verified chain from sever to system root certificates")
+	}
+
+	certChain := tlsConn.ConnectionState().VerifiedChains[0]
+
+	if len(certChain) == 0 {
+		// Certificate chain should never be empty but just being overly careful
+		return nil, nil, fmt.Errorf("No certificate present for %s", serverURL)
+	} else if len(certChain) == 1 {
+		// Server should never send a root certificate but just being overly careful
+		return nil, nil, fmt.Errorf("Certificate for %s is a root certificate", serverURL)
+	}
+
+	// ocspResp is nil if there is no stapled OCSP Response
+	ocspResp := tlsConn.OCSPResponse()
+
+	return certChain, ocspResp, nil
 }

@@ -14,7 +14,8 @@ const (
 // OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lint 03
 func TestLintProducedAtDate(t *testing.T) {
-    ocspResp, err := ocsptools.ReadOCSPResp(RespBadDates)
+    tools := ocsptools.Tools{}
+    ocspResp, err := tools.ReadOCSPResp(RespBadDates)
     if err != nil {
         panic(err)
     }
@@ -38,7 +39,8 @@ func TestLintProducedAtDate(t *testing.T) {
 // OCSP Response ThisUpdate date is no more than ThisUpdateLimit in the past
 // Source: Apple Lint 03
 func TestLintThisUpdateDate(t *testing.T) {
-	ocspResp, err := ocsptools.ReadOCSPResp(RespBadDates)
+	tools := ocsptools.Tools{}
+    ocspResp, err := tools.ReadOCSPResp(RespBadDates)
     if err != nil {
         panic(err)
     }

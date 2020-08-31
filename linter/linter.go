@@ -1,5 +1,7 @@
 package linter
 
+//go:generate mockgen -source=linter.go -destination=../mocks/mock_linter.go -package=mocks
+
 import (
 	"log"
 	"golang.org/x/crypto/ocsp"
@@ -32,9 +34,15 @@ var Lints = []LintStruct{
 	},
 }
 
+type LinterInterface interface {
+	LintOCSPResp(*ocsp.Response)
+}
+
+type Linter struct{}
+
 // LintOCSPResp takes in a parsed OCSP response and prints its status
 // TODO: change function so that it returns a list of failed lints
-func LintOCSPResp(resp *ocsp.Response) {
+func (l Linter) LintOCSPResp(resp *ocsp.Response) {
 	log.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
 
 	log.Println("Linting OCSP Response...")

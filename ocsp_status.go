@@ -2,8 +2,8 @@
 package main
 
 import (
+	"bytes"
 	"crypto"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"github.com/googleinterns/ocsp-response-linter/linter"
@@ -14,8 +14,8 @@ import (
 )
 
 // checkFromFile takes a path to an OCSP Response file and then reads, parses, and lints it
-func checkFromFile(respFile string) error {
-	ocspResp, err := ocsptools.ReadOCSPResp(respFile)
+func checkFromFile(tools ocsptools.ToolsInterface, linter linter.LinterInterface, respFile string) error {
+	ocspResp, err := tools.ReadOCSPResp(respFile)
 	if err != nil {
 		return err
 	}
@@ -27,23 +27,23 @@ func checkFromFile(respFile string) error {
 
 // checkFromCert takes a path to an ASN.1 DER encoded certificate file and
 // constructs and sends an OCSP request then parses and lints the OCSP response
-func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
+func checkFromCert(tools ocsptools.ToolsInterface, linter linter.LinterInterface, certFile string, isPost bool, ocspURL string, dir string, hash crypto.Hash) error {
 	reqMethod := http.MethodGet
 	if isPost {
 		reqMethod = http.MethodPost
 	}
 
-	leafCert, err := ocsptools.ParseCertificateFile(certFile)
+	leafCert, err := tools.ParseCertificateFile(certFile)
 	if err != nil {
 		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
-	issuerCert, err := ocsptools.GetIssuerCertFromLeafCert(leafCert)
+	issuerCert, err := tools.GetIssuerCertFromLeafCert(leafCert)
 	if err != nil {
 		return fmt.Errorf("Error getting issuer certificate from certificate: %w", err)
 	}
 
-	ocspResp, err := ocsptools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
+	ocspResp, err := tools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 	if err != nil {
 		return fmt.Errorf("Error fetching OCSP response: %w", err)
 	}
@@ -55,32 +55,12 @@ func checkFromCert(certFile string, isPost bool, ocspURL string, dir string, has
 
 // checkFromURL takes a server URL and constructs and sends an OCSP request to
 // check that URL's certificate then parses and lints the OCSP response
-func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
-	config := &tls.Config{}
-
-	tlsConn, err := tls.Dial("tcp", serverURL, config)
+func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface, serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
+	certChain, ocspResp, err := ocsptools.GetCertChainAndStapledResp(serverURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to %s: %w", serverURL, err)
+		return err
 	}
 
-	defer tlsConn.Close()
-
-	// shouldn't happen since Config.InsecureSkipVerify is false, just being overly careful
-	if len(tlsConn.ConnectionState().VerifiedChains) == 0 {
-		return fmt.Errorf("No verified chain from sever to system root certificates")
-	}
-
-	certChain := tlsConn.ConnectionState().VerifiedChains[0]
-
-	if len(certChain) == 0 {
-		// Certificate chain should never be empty but just being overly careful
-		return fmt.Errorf("No certificate present for %s", serverURL)
-	} else if len(certChain) == 1 {
-		// Server should never send a root certificate but just being overly careful
-		return fmt.Errorf("Certificate for %s is a root certificate", serverURL)
-	}
-
-	// else
 	leafCert := certChain[0] // the certificate we want to send to the CA
 	issuerCert := certChain[1] // the certificate of the issuer of the leaf cert
 
@@ -91,15 +71,13 @@ func checkFromURL(serverURL string, shouldPrint bool, isPost bool, noStaple bool
 		}
 	}
 
-	ocspResp := tlsConn.OCSPResponse()
-
 	if ocspResp == nil || noStaple {
 		reqMethod := http.MethodGet
 		if isPost {
 			reqMethod = http.MethodPost
 		}
 
-		ocspResp, err := ocsptools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
+		ocspResp, err := tools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 		if err != nil {
 			return fmt.Errorf("Error fetching OCSP response: %w", err)
 		}
@@ -132,6 +110,14 @@ func main() {
 
 	flag.Parse()
 
+	tools := ocsptools.Tools{}
+	linter := linter.Linter{}
+
+	var (
+		buf bytes.Buffer
+		logger = log.New(&buf, "main: ", log.Lshortfile)
+	)
+
 	if *inresp && *incert {
 		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
 	}
@@ -140,7 +126,7 @@ func main() {
 		// reading in OCSP response files
 		respFiles := flag.Args()
 		for _, respFile := range respFiles {
-			err := checkFromFile(respFile)
+			err := checkFromFile(tools, linter, respFile)
 			if err != nil {
 				panic(fmt.Errorf("Error checking OCSP Response file %s: %w", respFile, err).Error())
 			}
@@ -149,7 +135,7 @@ func main() {
 		// reading in certificate files
 		certFiles := flag.Args()
 		for _, certFile := range certFiles {
-			err := checkFromCert(certFile, *isPost, *ocspurl, *dir, crypto.SHA1)
+			err := checkFromCert(tools, linter, certFile, *isPost, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking certificate file %s: %w", certFile, err).Error())
 			}
@@ -159,13 +145,14 @@ func main() {
 		serverURLs := flag.Args()
 
 		for _, serverURL := range serverURLs {
-			err := checkFromURL(serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA256)
+			err := checkFromURL(tools, linter, serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA256)
 			if err == nil {
 				return
 			}
-			log.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
-			log.Println("Sending OCSP Request encoded with SHA1")
-			err = checkFromURL(serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA1)
+			logger.Println("Validation failed for sending OCSP Request encoded with SHA256: " + err.Error())
+			logger.Println("Sending OCSP Request encoded with SHA1")
+			fmt.Print(&buf)
+			err = checkFromURL(tools, linter, serverURL, *shouldPrint, *isPost, *noStaple, *ocspurl, *dir, crypto.SHA1)
 			if err != nil {
 				panic(fmt.Errorf("Error checking server URL %s: %w", serverURL, err).Error())
 			}
