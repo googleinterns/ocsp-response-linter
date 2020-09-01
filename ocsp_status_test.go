@@ -31,13 +31,16 @@ type MockLinter struct {}
 
 func (ml MockLinter) LintOCSPResp(resp *ocsp.Response) {}
 
-// TestCheckFromFile tests checkFromFile mocking ocsptools.ReadOCSPResp
+// TestCheckFromFile tests checkFromFile, which reads an OCSP response file and lints it
 func TestCheckFromFile(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
+	// mocking ocsptools.ReadOCSPResp
 	mt := mocks.NewMockToolsInterface(ctrl)
 	mt.EXPECT().ReadOCSPResp(Resp).Return(&ocsp.Response{}, nil)
 
+	// Alternate mocking scheme for linter, I want to keep this here just for memory
+	// When linting becomes more complicated, I may need to revert to doing this
 	// ml := mocks.NewMockLinterInterface(ctrl)
 	// ml.EXPECT().LintOCSPResp(gomock.AssignableToTypeOf(&ocsp.Response{})).Return()
 
@@ -60,7 +63,8 @@ func TestCheckFromFile(t *testing.T) {
 	})
 }
 
-// TestCheckFromFile tests checkFromFile mocking ocsptools functions
+// TestCheckFromFile tests checkFromCert, which parses a certificate file,
+// gets the issuer URL from that certificate file, and fetches the OCSP response
 func TestCheckFromCert(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
@@ -69,7 +73,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt := mocks.NewMockToolsInterface(ctrl)
 	mt.EXPECT().ParseCertificateFile(Cert).Return(&x509.Certificate{}, nil)
 	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.AssignableToTypeOf(&x509.Certificate{})).Return(&x509.Certificate{}, nil)
-	// I'm not sure if there's any value actually specifying all these types
+	// I don't think there is value in actually specifying all these types
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
@@ -112,7 +116,9 @@ func TestCheckFromCert(t *testing.T) {
 	})
 }
 
-// TestCheckFromURL tests checkFromURL mocking ocsptools functions
+// TestCheckFromURL tests checkFromURL, which gets the certificate chain
+// and stapled OCSP response from a server URL, then depending on flags
+// and the presence of a stapled response fetches an OCSP response
 func TestCheckFromURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 

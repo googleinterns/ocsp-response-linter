@@ -9,13 +9,14 @@ import (
 const (
 	GoodResp = "../testdata/resps/oldfbresp"
 	GoodCert = "../testdata/certs/google.der"
+	BadPath = "/blah/blah/blah"
 	// ExpiredCert = "./testdata/certs/expiredcert.der"
 	// NoIssuingURLCert = "./testdata/certs/rootcert.der"
 	// RevokedURL = "revoked.grc.com:443"
 	// BadURL = "blah.blah.blah"
 )
 
-// TestReadOCSPResp tests ReadOCSPResp
+// TestReadOCSPResp tests ReadOCSPResp, which reads and parses the OCSP response
 // We are not mocking ocsp.ParseResponse because we depend on that working
 func TestReadOCSPResp(t *testing.T) {
 	tools := Tools{}
@@ -31,6 +32,13 @@ func TestReadOCSPResp(t *testing.T) {
 		if status != ocsp.Good {
 			t.Errorf("Parsed OCSP Response should have status good but instead has status: %s", 
 				linter.StatusIntMap[status])
+		}
+	})
+
+	t.Run("Bad file path", func(t *testing.T) {
+		_, err := tools.ReadOCSPResp(BadPath)
+		if err == nil {
+			t.Errorf("Should have gotten error reading bad file path")
 		}
 	})
 
