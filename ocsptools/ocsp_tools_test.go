@@ -9,7 +9,7 @@ import (
 const (
 	GoodResp = "../testdata/resps/oldfbresp"
 	GoodCert = "../testdata/certs/google.der"
-	BadPath = "/blah/blah/blah"
+	BadPath  = "/blah/blah/blah"
 	// ExpiredCert = "./testdata/certs/expiredcert.der"
 	// NoIssuingURLCert = "./testdata/certs/rootcert.der"
 	// RevokedURL = "revoked.grc.com:443"
@@ -30,7 +30,7 @@ func TestReadOCSPResp(t *testing.T) {
 		// check if OCSP Response status was parsed correctly
 		status := parsed_resp.Status
 		if status != ocsp.Good {
-			t.Errorf("Parsed OCSP Response should have status good but instead has status: %s", 
+			t.Errorf("Parsed OCSP Response should have status good but instead has status: %s",
 				linter.StatusIntMap[status])
 		}
 	})

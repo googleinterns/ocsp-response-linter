@@ -4,10 +4,10 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"golang.org/x/crypto/ocsp"
 	"github.com/golang/mock/gomock"
 	"github.com/googleinterns/ocsp-response-linter/mocks"
 	"github.com/googleinterns/ocsp-response-linter/testdata/resps"
+	"golang.org/x/crypto/ocsp"
 	"io/ioutil"
 	"log"
 	"os"
@@ -17,7 +17,7 @@ import (
 const (
 	Resp = "./testdata/resps/oldfbresp"
 	Cert = "./testdata/certs/google.der"
-	URL = "google.com:443"
+	URL  = "google.com:443"
 )
 
 // TestMain sets up the testing framework
@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-type MockLinter struct {}
+type MockLinter struct{}
 
 func (ml MockLinter) LintOCSPResp(resp *ocsp.Response) {}
 
@@ -54,7 +54,7 @@ func TestCheckFromFile(t *testing.T) {
 	})
 
 	mt.EXPECT().ReadOCSPResp(Cert).Return(nil, fmt.Errorf(""))
-	
+
 	t.Run("ReadOCSPResp errors", func(t *testing.T) {
 		err := checkFromFile(mt, ml, Cert)
 		if err == nil {
@@ -82,7 +82,6 @@ func TestCheckFromCert(t *testing.T) {
 			t.Errorf("Got error reading good certificate file: %s", err.Error())
 		}
 	})
-	
 
 	mt.EXPECT().ParseCertificateFile(Resp).Return(nil, fmt.Errorf(""))
 
@@ -92,7 +91,6 @@ func TestCheckFromCert(t *testing.T) {
 			t.Errorf("Should have gotten error when ParseCertificateFile errors")
 		}
 	})
-	
 
 	mt.EXPECT().ParseCertificateFile(Cert).Return(nil, nil)
 	mt.EXPECT().GetIssuerCertFromLeafCert(nil).Return(nil, fmt.Errorf(""))
@@ -122,8 +120,8 @@ func TestCheckFromCert(t *testing.T) {
 func TestCheckFromURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	mockChain := []*x509.Certificate {
-		&x509.Certificate{},
+	mockChain := []*x509.Certificate{
+		{},
 		nil,
 	}
 
@@ -148,9 +146,8 @@ func TestCheckFromURL(t *testing.T) {
 			t.Errorf("Got error with stapled OCSP Response: %s", err.Error())
 		}
 	})
-	
 
-	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, []byte{1,}, nil)
+	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, []byte{1}, nil)
 
 	t.Run("Bad byte array for OCSP Response", func(t *testing.T) {
 		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1)
@@ -158,7 +155,6 @@ func TestCheckFromURL(t *testing.T) {
 			t.Errorf("Should have gotten error parsing bad byte array into OCSP response")
 		}
 	})
-	
 
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(nil, nil, fmt.Errorf(""))
 
@@ -168,11 +164,10 @@ func TestCheckFromURL(t *testing.T) {
 			t.Errorf("Should have gotten error when GetCertChainAndStapledResp errors")
 		}
 	})
-	
 
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, nil, nil)
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
-	
+
 	t.Run("FetchOCSPResp errors", func(t *testing.T) {
 		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1)
 		if err == nil {

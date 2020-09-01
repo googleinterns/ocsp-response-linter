@@ -19,7 +19,7 @@ func checkFromFile(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 	if err != nil {
 		return err
 	}
-	
+
 	linter.LintOCSPResp(ocspResp)
 
 	return nil
@@ -61,7 +61,7 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 		return err
 	}
 
-	leafCert := certChain[0] // the certificate we want to send to the CA
+	leafCert := certChain[0]   // the certificate we want to send to the CA
 	issuerCert := certChain[1] // the certificate of the issuer of the leaf cert
 
 	if shouldPrint {
@@ -106,7 +106,7 @@ func main() {
 	shouldPrint := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
 	isPost := flag.Bool("post", false, "Whether to use POST for OCSP request")
 	dir := flag.String("dir", "", "Where to write OCSP response, if blank don't write")
-	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")	
+	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")
 
 	flag.Parse()
 
@@ -114,7 +114,7 @@ func main() {
 	linter := linter.Linter{}
 
 	var (
-		buf bytes.Buffer
+		buf    bytes.Buffer
 		logger = log.New(&buf, "main: ", log.Lshortfile)
 	)
 

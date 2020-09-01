@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	RespTimeLimit = "10s"
+	RespTimeLimit    = "10s"
 	TimeoutInSeconds = 20
 )
 
@@ -33,7 +33,7 @@ type ToolsInterface interface {
 	GetCertChainAndStapledResp(string) ([]*x509.Certificate, []byte, error)
 }
 
-type Tools struct {}
+type Tools struct{}
 
 // PrintCert prints the given certificate using the external library github.com/grantae/certinfo
 func PrintCert(cert *x509.Certificate) error {
@@ -53,10 +53,10 @@ func (t Tools) ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
 	}
 	parsed_resp, err := ocsp.ParseResponse(ocsp_resp, nil)
 	if err != nil {
-    	return nil, fmt.Errorf("Error parsing OCSP Response: %w", err)
-    }
+		return nil, fmt.Errorf("Error parsing OCSP Response: %w", err)
+	}
 
-    return parsed_resp, err
+	return parsed_resp, err
 }
 
 // ParseCertificateFile takes a path to a certificate and returns a parsed certificate
@@ -183,7 +183,7 @@ func GetOCSPResp(ocspReq *http.Request) ([]byte, error) {
 	}
 
 	// Verification (source from Apple Lint 08)
-	if (endTime.Sub(startTime) > limit) {
+	if endTime.Sub(startTime) > limit {
 		fmt.Printf("Server took longer than %s to respond \n", RespTimeLimit)
 	}
 
