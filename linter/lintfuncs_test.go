@@ -20,19 +20,21 @@ func TestLintProducedAtDate(t *testing.T) {
         panic(err)
     }
 
-    err = LintProducedAtDate(ocspResp)
-
-    if err == nil {
-    	t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ProducedAt.String(), ProducedAtLimit)
-    }
+    t.Run("Old ProducedAt date", func(t *testing.T) {
+        err = LintProducedAtDate(ocspResp)
+        if err == nil {
+            t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ProducedAt.String(), ProducedAtLimit)
+        }
+    })
 
     ocspResp.ProducedAt = time.Now()
 
-    err = LintProducedAtDate(ocspResp)
-
-    if err != nil {
-    	t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
-    }
+    t.Run("Happy path", func(t *testing.T) {
+        err = LintProducedAtDate(ocspResp)
+        if err != nil {
+            t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
+        }
+    }) 
 }
 
 // TestLintThisUpdateDate tests LintThisUpdateDate, which checks that an 
@@ -45,17 +47,20 @@ func TestLintThisUpdateDate(t *testing.T) {
         panic(err)
     }
 
-    err = LintThisUpdateDate(ocspResp)
-
-    if err == nil {
-    	t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ThisUpdate.String(), ThisUpdateLimit)
-    }
+    t.Run("Old ThisUpdate date", func(t *testing.T) {
+        err = LintThisUpdateDate(ocspResp)
+        if err == nil {
+            t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ThisUpdate.String(), ThisUpdateLimit)
+        }
+    })
+    
 
     ocspResp.ThisUpdate = time.Now()
 
-    err = LintThisUpdateDate(ocspResp)
-
-    if err != nil {
-    	t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
-    }
+    t.Run("Happy path", func(t *testing.T) {
+        err = LintThisUpdateDate(ocspResp)
+        if err != nil {
+            t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
+        }
+    }) 
 }
