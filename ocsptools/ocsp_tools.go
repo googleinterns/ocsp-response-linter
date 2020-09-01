@@ -30,6 +30,7 @@ type ToolsInterface interface {
 	// CreateOCSPReq(string, *x509.Certificate, *x509.Certificate, string, crypto.Hash) (*http.Request, error)
 	// GetOCSPResp(*http.Request) ([]byte, error)
 	FetchOCSPResp(string, string, *x509.Certificate, *x509.Certificate, string, crypto.Hash) (*ocsp.Response, error)
+	GetCertChainAndStapledResp(string) ([]*x509.Certificate, []byte, error)
 }
 
 type Tools struct {}
@@ -227,7 +228,7 @@ func (t Tools) FetchOCSPResp(ocspURL string, dir string, leafCert *x509.Certific
 
 // GetCertChain takes in a serverURL, attempts to build a tls connection to it
 // and returns the resulting certificate chain and stapled OCSP Response
-func GetCertChainAndStapledResp(serverURL string) ([]*x509.Certificate, []byte, error) {
+func (t Tools) GetCertChainAndStapledResp(serverURL string) ([]*x509.Certificate, []byte, error) {
 	config := &tls.Config{}
 
 	tlsConn, err := tls.Dial("tcp", serverURL, config)

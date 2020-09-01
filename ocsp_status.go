@@ -56,7 +56,7 @@ func checkFromCert(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 // checkFromURL takes a server URL and constructs and sends an OCSP request to
 // check that URL's certificate then parses and lints the OCSP response
 func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface, serverURL string, shouldPrint bool, isPost bool, noStaple bool, ocspURL string, dir string, hash crypto.Hash) error {
-	certChain, ocspResp, err := ocsptools.GetCertChainAndStapledResp(serverURL)
+	certChain, ocspResp, err := tools.GetCertChainAndStapledResp(serverURL)
 	if err != nil {
 		return err
 	}

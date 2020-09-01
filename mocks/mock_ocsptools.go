@@ -94,3 +94,19 @@ func (mr *MockToolsInterfaceMockRecorder) FetchOCSPResp(arg0, arg1, arg2, arg3, 
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchOCSPResp", reflect.TypeOf((*MockToolsInterface)(nil).FetchOCSPResp), arg0, arg1, arg2, arg3, arg4, arg5)
 }
+
+// GetCertChainAndStapledResp mocks base method
+func (m *MockToolsInterface) GetCertChainAndStapledResp(arg0 string) ([]*x509.Certificate, []byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCertChainAndStapledResp", arg0)
+	ret0, _ := ret[0].([]*x509.Certificate)
+	ret1, _ := ret[1].([]byte)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetCertChainAndStapledResp indicates an expected call of GetCertChainAndStapledResp
+func (mr *MockToolsInterfaceMockRecorder) GetCertChainAndStapledResp(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCertChainAndStapledResp", reflect.TypeOf((*MockToolsInterface)(nil).GetCertChainAndStapledResp), arg0)
+}
