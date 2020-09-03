@@ -113,7 +113,7 @@ func (t Tools) FetchOCSPResp(h helpers.HelpersInterface, ocspURL string, dir str
 func (t Tools) GetCertChainAndStapledResp(serverURL string) ([]*x509.Certificate, []byte, error) {
 	config := &tls.Config{}
 
-	tlsConn, err := t.Dial("tcp", serverURL, config)
+	tlsConn, err := tls.Dial("tcp", serverURL, config)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to %s: %w", serverURL, err)
 	}

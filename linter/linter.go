@@ -1,6 +1,6 @@
 package linter
 
-//go:generate mockgen -source=linter.go -destination=../mocks/mock_linter.go -package=mocks
+//go:generate mockgen -source=linter.go -destination=../mocks/lintermock/mock_linter.go -package=lintermock
 
 import (
 	"golang.org/x/crypto/ocsp"

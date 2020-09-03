@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/googleinterns/ocsp-response-linter/linter"
 	"github.com/googleinterns/ocsp-response-linter/ocsptools"
+	"github.com/googleinterns/ocsp-response-linter/ocsptools/helpers"
 	"golang.org/x/crypto/ocsp"
 	"log"
 	"net/http"
@@ -38,12 +39,14 @@ func checkFromCert(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
-	issuerCert, err := tools.GetIssuerCertFromLeafCert(leafCert)
+	h := helpers.Helpers{}
+
+	issuerCert, err := tools.GetIssuerCertFromLeafCert(h, leafCert)
 	if err != nil {
 		return fmt.Errorf("Error getting issuer certificate from certificate: %w", err)
 	}
 
-	ocspResp, err := tools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
+	ocspResp, err := tools.FetchOCSPResp(h, ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 	if err != nil {
 		return fmt.Errorf("Error fetching OCSP response: %w", err)
 	}
@@ -77,7 +80,9 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 			reqMethod = http.MethodPost
 		}
 
-		ocspResp, err := tools.FetchOCSPResp(ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
+		h := helpers.Helpers{}
+
+		ocspResp, err := tools.FetchOCSPResp(h, ocspURL, dir, leafCert, issuerCert, reqMethod, hash)
 		if err != nil {
 			return fmt.Errorf("Error fetching OCSP response: %w", err)
 		}
