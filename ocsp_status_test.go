@@ -73,7 +73,6 @@ func TestCheckFromCert(t *testing.T) {
 	mt := toolsmock.NewMockToolsInterface(ctrl)
 	mt.EXPECT().ParseCertificateFile(Cert).Return(&x509.Certificate{}, nil)
 	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), gomock.Any()).Return(&x509.Certificate{}, nil)
-	// I don't think there is value in actually specifying all these types
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
