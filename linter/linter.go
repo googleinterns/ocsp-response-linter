@@ -1,22 +1,22 @@
 package linter
 
-//go:generate mockgen -source=linter.go -destination=../mocks/mock_linter.go -package=mocks
+//go:generate mockgen -source=linter.go -destination=../mocks/lintermock/mock_linter.go -package=lintermock
 
 import (
-	"log"
 	"golang.org/x/crypto/ocsp"
+	"log"
 )
 
-var StatusIntMap = map[int]string {
-	ocsp.Good: "good",
+var StatusIntMap = map[int]string{
+	ocsp.Good:    "good",
 	ocsp.Revoked: "revoked",
 	ocsp.Unknown: "unknown",
 	// ocsp.SeverFailed is never used: godoc.org/golang.org/x/crypto/ocsp#pkg-constants
 }
 
 type LintStruct struct {
-	info   string // description of the lint
-	source string // source of the lint
+	info   string                          // description of the lint
+	source string                          // source of the lint
 	exec   func(resp *ocsp.Response) error // the linting function itself
 }
 
