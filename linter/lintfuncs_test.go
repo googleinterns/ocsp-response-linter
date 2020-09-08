@@ -1,8 +1,8 @@
 package linter
 
 import (
-    "github.com/googleinterns/ocsp-response-linter/ocsptools"
-    "testing"
+	"github.com/googleinterns/ocsp-response-linter/ocsptools"
+	"testing"
 	"time"
 )
 
@@ -14,46 +14,52 @@ const (
 // OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lint 03
 func TestLintProducedAtDate(t *testing.T) {
-    ocspResp, err := ocsptools.ReadOCSPResp(RespBadDates)
-    if err != nil {
-        panic(err)
-    }
+	tools := ocsptools.Tools{}
+	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	if err != nil {
+		panic(err)
+	}
 
-    err = LintProducedAtDate(ocspResp)
+	t.Run("Old ProducedAt date", func(t *testing.T) {
+		err = LintProducedAtDate(ocspResp)
+		if err == nil {
+			t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ProducedAt.String(), ProducedAtLimit)
+		}
+	})
 
-    if err == nil {
-    	t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ProducedAt.String(), ProducedAtLimit)
-    }
+	ocspResp.ProducedAt = time.Now()
 
-    ocspResp.ProducedAt = time.Now()
-
-    err = LintProducedAtDate(ocspResp)
-
-    if err != nil {
-    	t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
-    }
+	t.Run("Happy path", func(t *testing.T) {
+		err = LintProducedAtDate(ocspResp)
+		if err != nil {
+			t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
+		}
+	})
 }
 
-// TestLintThisUpdateDate tests LintThisUpdateDate, which checks that an 
+// TestLintThisUpdateDate tests LintThisUpdateDate, which checks that an
 // OCSP Response ThisUpdate date is no more than ThisUpdateLimit in the past
 // Source: Apple Lint 03
 func TestLintThisUpdateDate(t *testing.T) {
-	ocspResp, err := ocsptools.ReadOCSPResp(RespBadDates)
-    if err != nil {
-        panic(err)
-    }
+	tools := ocsptools.Tools{}
+	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	if err != nil {
+		panic(err)
+	}
 
-    err = LintThisUpdateDate(ocspResp)
+	t.Run("Old ThisUpdate date", func(t *testing.T) {
+		err = LintThisUpdateDate(ocspResp)
+		if err == nil {
+			t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ThisUpdate.String(), ThisUpdateLimit)
+		}
+	})
 
-    if err == nil {
-    	t.Errorf("Should have had error: %s is more than %s in the past", ocspResp.ThisUpdate.String(), ThisUpdateLimit)
-    }
+	ocspResp.ThisUpdate = time.Now()
 
-    ocspResp.ThisUpdate = time.Now()
-
-    err = LintThisUpdateDate(ocspResp)
-
-    if err != nil {
-    	t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
-    }
+	t.Run("Happy path", func(t *testing.T) {
+		err = LintThisUpdateDate(ocspResp)
+		if err != nil {
+			t.Errorf("Should not have gotten error, instead got error: %s", err.Error())
+		}
+	})
 }

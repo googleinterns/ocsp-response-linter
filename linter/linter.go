@@ -1,20 +1,22 @@
 package linter
 
+//go:generate mockgen -source=linter.go -destination=../mocks/lintermock/mock_linter.go -package=lintermock
+
 import (
-	"fmt"
 	"golang.org/x/crypto/ocsp"
+	"log"
 )
 
-var StatusIntMap = map[int]string {
-	ocsp.Good: "good",
+var StatusIntMap = map[int]string{
+	ocsp.Good:    "good",
 	ocsp.Revoked: "revoked",
 	ocsp.Unknown: "unknown",
 	// ocsp.SeverFailed is never used: godoc.org/golang.org/x/crypto/ocsp#pkg-constants
 }
 
 type LintStruct struct {
-	info   string // description of the lint
-	source string // source of the lint
+	info   string                          // description of the lint
+	source string                          // source of the lint
 	exec   func(resp *ocsp.Response) error // the linting function itself
 }
 
@@ -32,20 +34,26 @@ var Lints = []LintStruct{
 	},
 }
 
+type LinterInterface interface {
+	LintOCSPResp(*ocsp.Response)
+}
+
+type Linter struct{}
+
 // LintOCSPResp takes in a parsed OCSP response and prints its status
 // TODO: change function so that it returns a list of failed lints
-func LintOCSPResp(resp *ocsp.Response) {
-	fmt.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
+func (l Linter) LintOCSPResp(resp *ocsp.Response) {
+	log.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
 
-	fmt.Println("Linting OCSP Response...")
+	log.Println("Linting OCSP Response...")
 	for _, lint := range Lints {
-		fmt.Print(lint.info + ": ")
+		log.Print(lint.info + ": ")
 		err := lint.exec(resp)
 		if err == nil {
-			fmt.Println("passed")
+			log.Println("passed")
 		} else {
-			fmt.Println("failed: " + err.Error())
+			log.Println("failed: " + err.Error())
 		}
 	}
-	fmt.Println("Finished linting OCSP response")
+	log.Println("Finished linting OCSP response")
 }
