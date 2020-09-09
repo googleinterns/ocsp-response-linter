@@ -24,12 +24,12 @@ type LintStruct struct {
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
 	&LintStruct{
-		"Check that response producedAt date is no more than " + ProducedAtLimit + " in the past",
+		fmt.Sprintf("Check that response producedAt date is no more than %s in the past", ProducedAtLimit),
 		"Apple Lint 03",
 		LintProducedAtDate,
 	},
 	&LintStruct{
-		"Check that response thisUpdate date is no more than " + ThisUpdateLimit + " in the past",
+		fmt.Sprintf("Check that response thisUpdate date is no more than %s in the past", ThisUpdateLimit)
 		"Apple Lint 03",
 		LintThisUpdateDate,
 	},
