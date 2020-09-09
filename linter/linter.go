@@ -29,7 +29,7 @@ var Lints = []*LintStruct{
 		LintProducedAtDate,
 	},
 	&LintStruct{
-		fmt.Sprintf("Check that response thisUpdate date is no more than %s in the past", ThisUpdateLimit)
+		fmt.Sprintf("Check that response thisUpdate date is no more than %s in the past", ThisUpdateLimit),
 		"Apple Lint 03",
 		LintThisUpdateDate,
 	},
