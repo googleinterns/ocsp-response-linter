@@ -37,6 +37,7 @@ A complete table of available flags:
 | inresp  | Read in OCSP response(s) files                        | `./ocsp_status -inresp resps/google_resp` |
 | incert  | Read in certificate files (must be ASN.1 DER encoded) | `./ocsp_status -incert certs/google_cert.der` |
 | ocspurl | Specify the url to send the OCSP request to           | `./ocsp_status -ocspurl=http://ocsp.pki.goog/gts1o1core google.com:443` |
-| post    | Use POST to send the OCSP request (instead of GET)    | `./ocsp_status -post google.com:443` |
+| post    | Use POST to send the OCSP request (default is GET)    | `./ocsp_status -post google.com:443` |
 | dir     | Write the OCSP response to a file                     | `./ocsp_status -dir=resps/google_resp google.com:443`|
 | nostaple| Don't use the stapled OCSP response (only use with server URLs) | `./ocsp_status -nostaple google.com:443` |
+| verbose | Print information on all lints (default is only printing failed/errored lints) | `./ocsp_status -verbose google.com:443`|
