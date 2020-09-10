@@ -19,6 +19,22 @@ var DurationToString = map[string]string {
 	ProducedAtLimitCA: "365 days",
 }
 
+// CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
+// Source: Apple Lint 10
+func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+	if resp.Signature == nil || len(resp.Signature) == 0 {
+		return Failed, "OCSP Response is not signed"
+	}
+
+	algo := resp.SignatureAlgorithm
+
+	if algo == x509.SHA1WithRSA || algo == x509.DSAWithSHA1 || algo == x509.ECDSAWithSHA1 {
+		return Failed, "OCSP Response is signed with an algorithm that uses SHA1"
+	}
+	
+	return Passed, "OCSP Response is signed with an algorithm that does not use SHA1"
+}
+
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lints 03 & 05
 func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {

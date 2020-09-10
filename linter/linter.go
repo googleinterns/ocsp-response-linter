@@ -25,6 +25,11 @@ type LintStruct struct {
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
 	&LintStruct{
+		"Check response signature",
+		"Apple Lint 10",
+		CheckSignature,
+	},
+	&LintStruct{
 		"Check response producedAt date",
 		"Apple Lints 03 & 05",
 		LintProducedAtDate,
