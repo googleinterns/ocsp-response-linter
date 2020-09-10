@@ -28,6 +28,7 @@ func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus
 
 	algo := resp.SignatureAlgorithm
 
+	// These are all the SHA1 based algorithms, see https://godoc.org/crypto/x509#SignatureAlgorithm
 	if algo == x509.SHA1WithRSA || algo == x509.DSAWithSHA1 || algo == x509.ECDSAWithSHA1 {
 		return Failed, "OCSP Response is signed with an algorithm that uses SHA1"
 	}
