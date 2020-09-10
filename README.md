@@ -12,7 +12,7 @@ We distinguish between lints and verifications as follows:
 - A lint is a requirement that can be checked using only the OCSP response (e.g. ensuring that the producedAt date field of a response is no more than four days in the past)
 - A verification is a requirement that necessitates querying an outside service and may run while in the process of fetching the OCSP Response (e.g. checking that an OCSP response is delivered in 10 seconds after sending the request)
 
-The lints and verifications implemented come primarily from [Apple's OCSP Lints and Test Cases](bug1588001.bmoattachments.org/attachment.cgi?id=9160540) and IETF standards set out in [RFC 6960](tools.ietf.org/html/rfc6960).
+The lints and verifications implemented come primarily from [Apple's OCSP Lints and Test Cases](http://bug1588001.bmoattachments.org/attachment.cgi?id=9160540) and IETF standards set out in [RFC 6960](http://tools.ietf.org/html/rfc6960).
 
 ## Usage
 
@@ -34,10 +34,13 @@ A complete table of available flags:
 
 | Flag    | Description                                           | Example                                                    |
 | --------| ------------------------------------------------------| ---------------------------------------------------------- |
-| inresp  | Read in OCSP response(s) files                        | `./ocsp_status -inresp resps/google_resp` |
-| incert  | Read in certificate files (must be ASN.1 DER encoded) | `./ocsp_status -incert certs/google_cert.der` |
-| ocspurl | Specify the url to send the OCSP request to           | `./ocsp_status -ocspurl=http://ocsp.pki.goog/gts1o1core google.com:443` |
+| inresp  | Read in OCSP response(s) files                        | `./ocsp_status -inresp google_resp google_resp2` |
+| incert  | Read in certificate files (must be ASN.1 DER encoded) | `./ocsp_status -incert google_cert.der google_cert2.der` |
+| issuercert | Read in space separated issuer certificate files (must be ASN.1 DER encoded) | `./ocsp_status -issuercert="googleissuer_cert.der googleissuer_cert2.der" -incert google_cert.der google_cert2.der` |
+| ocspurl | Read in space separated urls to send the OCSP request to           | `./ocsp_status -ocspurl=http://ocsp1.com http://ocsp2.com google.com:443 google2.com:443` |
 | post    | Use POST to send the OCSP request (default is GET)    | `./ocsp_status -post google.com:443` |
-| dir     | Write the OCSP response to a file                     | `./ocsp_status -dir=resps/google_resp google.com:443`|
+| dir     | Write the OCSP response to a file                     | `./ocsp_status -dir=google_resp google.com:443`|
 | nostaple| Don't use the stapled OCSP response (only use with server URLs) | `./ocsp_status -nostaple google.com:443` |
 | verbose | Print information on all lints (default is only printing failed/errored lints) | `./ocsp_status -verbose google.com:443`|
+
+Note you can also do `./ocsp_status -help` to see a list of all possible flags and their descriptions.
