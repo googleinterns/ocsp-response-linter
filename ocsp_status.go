@@ -3,7 +3,6 @@ package main
 
 import (
 	"crypto"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	"github.com/googleinterns/ocsp-response-linter/linter"
@@ -21,13 +20,9 @@ func checkFromFile(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 		return err
 	}
 
-	var issuerCert *x509.Certificate // pointers initialize to nil
-
-	if issuerFile != "" {
-		issuerCert, err = tools.ParseCertificateFile(issuerFile)
-		if err != nil {
-			return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
-		}
+	issuerCert, err := tools.ParseCertificateFile(issuerFile)
+	if err != nil {
+		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
 	linter.LintOCSPResp(ocspResp, issuerCert, verbose)
@@ -48,15 +43,14 @@ func checkFromCert(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
-	var issuerCert *x509.Certificate
+	issuerCert, err := tools.ParseCertificateFile(issuerFile)
+	if err != nil {
+		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
+	}
+
 	h := helpers.Helpers{}
 
-	if issuerFile != "" {
-		issuerCert, err = tools.ParseCertificateFile(issuerFile)
-		if err != nil {
-			return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
-		}
-	} else {
+	if issuerCert == nil {
 		issuerCert, err = tools.GetIssuerCertFromLeafCert(h, leafCert)
 		if err != nil {
 			return fmt.Errorf("Error getting issuer certificate from certificate: %w", err)
@@ -82,12 +76,14 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 	}
 
 	leafCert := certChain[0]   // the certificate we want to send to the CA
-	issuerCert := certChain[1] // the certificate of the issuer of the leaf cert
-	if issuerFile != "" {
-		issuerCert, err = tools.ParseCertificateFile(issuerFile)
-		if err != nil {
-			return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
-		}
+
+	issuerCert, err := tools.ParseCertificateFile(issuerFile)
+	if err != nil {
+		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
+	}
+
+	if issuerCert == nil {
+		issuerCert = certChain[1] // the certificate of the issuer of the leaf cert
 	}
 
 	if shouldPrint {

@@ -23,7 +23,7 @@ func TestLintProducedAtDate(t *testing.T) {
 	t.Run("Old ProducedAt date", func(t *testing.T) {
 		status, info := LintProducedAtDate(ocspResp, nil)
 		if status != Failed {
-			t.Errorf("Should have had error, instead got: %s", info)
+			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
 	})
 
@@ -32,7 +32,7 @@ func TestLintProducedAtDate(t *testing.T) {
 	t.Run("Happy path", func(t *testing.T) {
 		status, info := LintProducedAtDate(ocspResp, nil)
 		if status != Passed {
-			t.Errorf("Should not have gotten error, instead got error: %s", info)
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
 	})
 }
@@ -50,7 +50,7 @@ func TestLintThisUpdateDate(t *testing.T) {
 	t.Run("Old ThisUpdate date", func(t *testing.T) {
 		status, info := LintThisUpdateDate(ocspResp, nil)
 		if status != Failed {
-			t.Errorf("Should have had error: instead got %s", info)
+			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
 	})
 
@@ -59,7 +59,7 @@ func TestLintThisUpdateDate(t *testing.T) {
 	t.Run("Happy path", func(t *testing.T) {
 		status, info := LintThisUpdateDate(ocspResp, nil)
 		if status != Passed {
-			t.Errorf("Should not have gotten error, instead got error: %s", info)
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
 	})
 }

@@ -49,6 +49,10 @@ func (t Tools) ReadOCSPResp(ocspRespFile string) (*ocsp.Response, error) {
 
 // ParseCertificateFile takes a path to a certificate and returns a parsed certificate
 func (t Tools) ParseCertificateFile(certFile string) (*x509.Certificate, error) {
+	if certFile == "" {
+		return nil, nil
+	}
+	
 	cert, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading certificate file: %w", err)
