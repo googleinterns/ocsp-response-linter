@@ -3,6 +3,7 @@ package linter
 //go:generate mockgen -source=linter.go -destination=../mocks/lintermock/mock_linter.go -package=lintermock
 
 import (
+	"crypto/x509"
 	"fmt"
 	"golang.org/x/crypto/ocsp"
 	"sort"
@@ -18,19 +19,19 @@ var StatusIntMap = map[int]string{
 type LintStruct struct {
 	Info   string                          // description of the lint
 	Source string                          // source of the lint
-	Exec   func(resp *ocsp.Response) (LintStatus, string) // the linting function itself
+	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) // the linting function itself
 }
 
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
 	&LintStruct{
-		fmt.Sprintf("Check that response producedAt date is no more than %s in the past", ProducedAtLimit),
-		"Apple Lint 03",
+		"Check response producedAt date",
+		"Apple Lints 03 & 05",
 		LintProducedAtDate,
 	},
 	&LintStruct{
-		fmt.Sprintf("Check that response thisUpdate date is no more than %s in the past", ThisUpdateLimit),
-		"Apple Lint 03",
+		"Check response thisUpdate date",
+		"Apple Lints 03 & 05",
 		LintThisUpdateDate,
 	},
 }
@@ -50,7 +51,7 @@ type LintResult struct {
 }
 
 type LinterInterface interface {
-	LintOCSPResp(*ocsp.Response, bool)
+	LintOCSPResp(*ocsp.Response, *x509.Certificate, bool)
 }
 
 type Linter struct{}
@@ -80,12 +81,12 @@ func printResults(results []*LintResult, verbose bool) {
 }
 
 // LintOCSPResp takes in a parsed OCSP response and prints its status, and then lints it
-func (l Linter) LintOCSPResp(resp *ocsp.Response, verbose bool) {
+func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, verbose bool) {
 	fmt.Printf("OCSP Response status: %s \n\n", StatusIntMap[resp.Status])
 
 	var results []*LintResult
 	for _, lint := range Lints {
-		status, info := lint.Exec(resp)
+		status, info := lint.Exec(resp, leafCert)
 		results = append(results, &LintResult{
 			Lint: lint,
 			Status: status,

@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 
 type MockLinter struct{}
 
-func (ml MockLinter) LintOCSPResp(resp *ocsp.Response, verbose bool) {}
+func (ml MockLinter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, verbose bool) {}
 
 // TestCheckFromFile tests checkFromFile, which reads an OCSP response file and lints it
 func TestCheckFromFile(t *testing.T) {
@@ -47,7 +47,7 @@ func TestCheckFromFile(t *testing.T) {
 	ml := MockLinter{}
 
 	t.Run("Happy path", func(t *testing.T) {
-		err := checkFromFile(mt, ml, Resp, false)
+		err := checkFromFile(mt, ml, Resp, "", false)
 		if err != nil {
 			t.Errorf("Got error reading good response: %s", err.Error())
 		}
@@ -56,7 +56,7 @@ func TestCheckFromFile(t *testing.T) {
 	mt.EXPECT().ReadOCSPResp(Cert).Return(nil, fmt.Errorf(""))
 
 	t.Run("ReadOCSPResp errors", func(t *testing.T) {
-		err := checkFromFile(mt, ml, Cert, false)
+		err := checkFromFile(mt, ml, Cert, "", false)
 		if err == nil {
 			t.Errorf("Should have gotten error when ReadOCSPResp errors")
 		}
@@ -76,7 +76,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
-		err := checkFromCert(mt, ml, Cert, false, "", "", crypto.SHA1, false)
+		err := checkFromCert(mt, ml, Cert, "", false, "", "", crypto.SHA1, false)
 		if err != nil {
 			t.Errorf("Got error reading good certificate file: %s", err.Error())
 		}
@@ -85,7 +85,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().ParseCertificateFile(Resp).Return(nil, fmt.Errorf(""))
 
 	t.Run("ParseCertificateFile errors", func(t *testing.T) {
-		err := checkFromCert(mt, ml, Resp, false, "", "", crypto.SHA1, false)
+		err := checkFromCert(mt, ml, Resp, "", false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error when ParseCertificateFile errors")
 		}
@@ -95,7 +95,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), nil).Return(nil, fmt.Errorf(""))
 
 	t.Run("GetIssuerCertFromLeafCert errors", func(t *testing.T) {
-		err := checkFromCert(mt, ml, Cert, false, "", "", crypto.SHA1, false)
+		err := checkFromCert(mt, ml, Cert, "", false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error when GetIssuerCertFromLeafCert errors")
 		}
@@ -106,7 +106,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
 
 	t.Run("FetchOCSPResp errors", func(t *testing.T) {
-		err := checkFromCert(mt, ml, Cert, false, "", "", crypto.SHA1, false)
+		err := checkFromCert(mt, ml, Cert, "", false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error when FetchOCSPResp errors")
 		}
@@ -128,7 +128,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
-		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1, false)
+		err := checkFromURL(mt, ml, URL, "", false, false, false, "", "", crypto.SHA1, false)
 		if err != nil {
 			t.Errorf("Got error from good URL: %s", err.Error())
 		}
@@ -137,7 +137,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, resps.ByteArrayOCSPResp, nil)
 
 	t.Run("Happy path with stapled OCSP Response", func(t *testing.T) {
-		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1, false)
+		err := checkFromURL(mt, ml, URL, "", false, false, false, "", "", crypto.SHA1, false)
 		if err != nil {
 			t.Errorf("Got error with stapled OCSP Response: %s", err.Error())
 		}
@@ -146,7 +146,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, []byte{1}, nil)
 
 	t.Run("Bad byte array for OCSP Response", func(t *testing.T) {
-		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1, false)
+		err := checkFromURL(mt, ml, URL, "", false, false, false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error parsing bad byte array into OCSP response")
 		}
@@ -155,7 +155,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(nil, nil, fmt.Errorf(""))
 
 	t.Run("GetCertChainAndStapledResp errors", func(t *testing.T) {
-		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1, false)
+		err := checkFromURL(mt, ml, URL, "", false, false, false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error when GetCertChainAndStapledResp errors")
 		}
@@ -165,7 +165,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
 
 	t.Run("FetchOCSPResp errors", func(t *testing.T) {
-		err := checkFromURL(mt, ml, URL, false, false, false, "", "", crypto.SHA1, false)
+		err := checkFromURL(mt, ml, URL, "", false, false, false, "", "", crypto.SHA1, false)
 		if err == nil {
 			t.Errorf("Should have gotten error when FetchOCSPResp errors")
 		}
