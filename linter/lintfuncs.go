@@ -22,7 +22,7 @@ var DurationToString = map[string]string {
 }
 
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
-// Source: Apple Lint 10
+// Source: Apple Lints 10 & 12
 func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
 	if resp.Signature == nil || len(resp.Signature) == 0 {
 		return Failed, "OCSP Response is not signed"

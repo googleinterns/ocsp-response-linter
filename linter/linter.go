@@ -26,7 +26,7 @@ type LintStruct struct {
 var Lints = []*LintStruct{
 	&LintStruct{
 		"Check response signature",
-		"Apple Lint 10",
+		"Apple Lints 10 & 12",
 		CheckSignature,
 	},
 	&LintStruct{

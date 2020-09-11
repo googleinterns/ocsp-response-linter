@@ -2,6 +2,7 @@ package linter
 
 import (
 	"crypto/x509"
+	"fmt"
 	"github.com/googleinterns/ocsp-response-linter/ocsptools"
 	"testing"
 	"time"
@@ -14,12 +15,11 @@ const (
 // TestCheckSignature tests CheckSignature, which checks that an
 // OCSP Response signature is present and not signed with an algorithm
 // that uses SHA-1
-// Source: Apple Lint 10
+// Source: Apple Lints 10 & 12
 func TestCheckSignature(t *testing.T) {
-	tools := ocsptools.Tools{}
-	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Happy Path", func(t *testing.T) {
@@ -50,10 +50,9 @@ func TestCheckSignature(t *testing.T) {
 // OCSP Response ProducedAt date is not too far in the past
 // Source: Apple Lints 03 & 05
 func TestLintProducedAtDate(t *testing.T) {
-	tools := ocsptools.Tools{}
-	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Old ProducedAt date", func(t *testing.T) {
@@ -77,10 +76,9 @@ func TestLintProducedAtDate(t *testing.T) {
 // OCSP Response ThisUpdate date is not too far in the past
 // Source: Apple Lints 03 & 05
 func TestLintThisUpdateDate(t *testing.T) {
-	tools := ocsptools.Tools{}
-	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Old ThisUpdate date", func(t *testing.T) {
@@ -104,10 +102,9 @@ func TestLintThisUpdateDate(t *testing.T) {
 // NextUpdate date is no more than NextUpdateLimit in the future of its ThisUpdate date
 // Source: Apple Lint 04
 func TestLintNextUpdateDate(t *testing.T) {
-	tools := ocsptools.Tools{}
-	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Happy path", func(t *testing.T) {
