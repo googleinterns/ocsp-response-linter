@@ -39,6 +39,11 @@ var Lints = []*LintStruct{
 		"Apple Lints 03 & 05",
 		LintThisUpdateDate,
 	},
+	&LintStruct{
+		"Check response nextUpdate date",
+		"Apple Lint 04",
+		LintNextUpdateDate,
+	},
 }
 
 type LintStatus string
