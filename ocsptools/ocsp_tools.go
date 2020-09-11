@@ -103,7 +103,7 @@ func (t Tools) FetchOCSPResp(h helpers.HelpersInterface, ocspURL string, dir str
 			return nil, fmt.Errorf("Error writing OCSP Response to file %s: %w", dir, err)
 		}
 	}
-
+	// note that ocsp.ParseResponse also checks ocspResp's signature
 	parsedResp, err := ocsp.ParseResponse(ocspResp, issuerCert)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing OCSP response: %w", err)

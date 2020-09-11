@@ -12,11 +12,13 @@ const (
 	ThisUpdateLimitSubscriber = "96h" // 4 days
 	ProducedAtLimitCA = "8760h" // 365 days
 	ThisUpdateLimitCA = "8760h" // 365 days
+	NextUpdateLimitSubscriber = "240h" // 10 days
 )
 
 var DurationToString = map[string]string {
 	ProducedAtLimitSubscriber: "4 days",
 	ProducedAtLimitCA: "365 days",
+	NextUpdateLimitSubscriber: "10 days",
 }
 
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
@@ -58,7 +60,7 @@ func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 			resp.ProducedAt, certType, DurationToString[producedAtLimit])
 	}
 
-	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s of the past", 
+	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s in the past", 
 		resp.ProducedAt, certType, DurationToString[producedAtLimit])
 }
 
@@ -84,7 +86,30 @@ func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 		
 	}
 
-	return Passed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is within %s of the past", 
+	return Passed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is within %s in the past", 
 		resp.ThisUpdate, certType, DurationToString[thisUpdateLimit])
+	
+}
+
+// LintNextUpdateDate checks that an OCSP Response NextUpdate date is no more than NextUpdateLimitSubscriber in the past
+// Source: Apple Lint 04
+func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+	if leafCert != nil && leafCert.IsCA {
+		return Passed, "OCSP Response nextUpdate lint not applicable to CA certificates"
+	}
+
+	limit, err := time.ParseDuration(NextUpdateLimitSubscriber)
+	if err != nil {
+		return Error, fmt.Sprintf("Could not parse time duration %s", NextUpdateLimitSubscriber)
+	}
+
+	if resp.NextUpdate.Sub(resp.ThisUpdate) > limit {
+		return Failed, fmt.Sprintf("OCSP Response NextUpdate date %s is more than %s after ThisUpdate date %s", 
+			resp.NextUpdate, DurationToString[NextUpdateLimitSubscriber], resp.ThisUpdate)
+		
+	}
+
+	return Passed, fmt.Sprintf("OCSP Response NextUpdate date %s is within %s after ThisUpdate date %s", 
+		resp.NextUpdate, DurationToString[NextUpdateLimitSubscriber], resp.ThisUpdate)
 	
 }
