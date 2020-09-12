@@ -129,6 +129,7 @@ func TestCheckFromURL(t *testing.T) {
 
 	mt := toolsmock.NewMockToolsInterface(ctrl)
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, nil, nil)
+	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), gomock.Any()).Return(&x509.Certificate{}, nil)
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
@@ -140,6 +141,7 @@ func TestCheckFromURL(t *testing.T) {
 	})
 
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, resps.ByteArrayOCSPResp, nil)
+	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), gomock.Any()).Return(nil, nil)
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 
 	t.Run("Happy path with stapled OCSP Response", func(t *testing.T) {
@@ -150,6 +152,7 @@ func TestCheckFromURL(t *testing.T) {
 	})
 
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, []byte{1}, nil)
+	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), gomock.Any()).Return(&x509.Certificate{}, nil)
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 
 	t.Run("Bad byte array for OCSP Response", func(t *testing.T) {
@@ -169,6 +172,7 @@ func TestCheckFromURL(t *testing.T) {
 	})
 
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(mockChain, nil, nil)
+	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), gomock.Any()).Return(&x509.Certificate{}, nil)
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
 
