@@ -123,7 +123,7 @@ func TestCheckFromCert(t *testing.T) {
 func TestCheckFromURL(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	mockChain := []*x509.Certificate{nil, nil,}
+	mockChain := []*x509.Certificate{nil, nil}
 
 	ml := MockLinter{}
 
