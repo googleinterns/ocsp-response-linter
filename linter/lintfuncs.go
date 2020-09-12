@@ -15,6 +15,7 @@ const (
 	NextUpdateLimitSubscriber = "240h" // 10 days
 )
 
+// DurationToString is a map mapping durations to more readable strings
 var DurationToString = map[string]string {
 	ProducedAtLimitSubscriber: "4 days",
 	ProducedAtLimitCA: "365 days",

@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 )
 
+// ToolsInterface is an interface for the functions that can be used from this file
 type ToolsInterface interface {
 	ReadOCSPResp(string) (*ocsp.Response, error)
 	ParseCertificateFile(string) (*x509.Certificate, error)
@@ -21,6 +22,7 @@ type ToolsInterface interface {
 	GetCertChainAndStapledResp(string) ([]*x509.Certificate, []byte, error)
 }
 
+// Tools is an exportable struct of type ToolsInterface
 type Tools struct{}
 
 // PrintCert prints the given certificate using the external library github.com/grantae/certinfo
@@ -112,7 +114,7 @@ func (t Tools) FetchOCSPResp(h helpers.HelpersInterface, ocspURL string, dir str
 	return parsedResp, nil
 }
 
-// GetCertChain takes in a serverURL, attempts to build a tls connection to it
+// GetCertChainAndStapledResp takes in a serverURL, attempts to build a tls connection to it
 // and returns the resulting certificate chain and stapled OCSP Response
 func (t Tools) GetCertChainAndStapledResp(serverURL string) ([]*x509.Certificate, []byte, error) {
 	config := &tls.Config{}

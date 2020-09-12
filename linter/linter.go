@@ -9,6 +9,7 @@ import (
 	"sort"
 )
 
+// StatusIntMap maps ocsp statuses to strings
 var StatusIntMap = map[int]string{
 	ocsp.Good:    "good",
 	ocsp.Revoked: "revoked",
@@ -16,6 +17,7 @@ var StatusIntMap = map[int]string{
 	// ocsp.SeverFailed is never used: godoc.org/golang.org/x/crypto/ocsp#pkg-constants
 }
 
+// LintStruct defines the struct of a lint
 type LintStruct struct {
 	Info   string                          // description of the lint
 	Source string                          // source of the lint
@@ -46,6 +48,7 @@ var Lints = []*LintStruct{
 	},
 }
 
+// LintStatus defines the possible statuses for a lint
 type LintStatus string
 
 const (
@@ -54,16 +57,19 @@ const (
 	Error LintStatus = "ERROR" // encountered error while running lint
 )
 
+// LintResult defines the struct of the result of a Lint
 type LintResult struct {
 	Lint *LintStruct
 	Status LintStatus
 	Info string
 }
 
+// LinterInterface is an interface containing the functions that are exported from this file
 type LinterInterface interface {
 	LintOCSPResp(*ocsp.Response, *x509.Certificate, bool)
 }
 
+// Linter is a struct of type LinterInterface
 type Linter struct{}
 
 // printResults prints the results of all the lints run
