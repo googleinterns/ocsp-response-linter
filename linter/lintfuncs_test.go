@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	RespBadDates = "../testdata/resps/oldfbresp"
+	RespBadDates = "../testdata/resps/oldfbresp" // basic OCSP response
 )
 
 // TestCheckSignature tests CheckSignature, which checks that an

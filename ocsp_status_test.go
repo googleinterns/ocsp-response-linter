@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	Resp = "./testdata/resps/oldfbresp"
-	Cert = "./testdata/certs/google.der"
-	URL  = "google.com:443"
+	Resp = "./testdata/resps/oldfbresp" // sample response file
+	Cert = "./testdata/certs/google.der" // sample certificate file
+	URL  = "google.com:443" // sample URL
 )
 
 // TestMain sets up the testing framework
