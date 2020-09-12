@@ -82,8 +82,14 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
+	h := helpers.Helpers{}
+
 	if issuerCert == nil {
-		issuerCert = certChain[1] // the certificate of the issuer of the leaf cert
+		issuerCert, err = tools.GetIssuerCertFromLeafCert(h, leafCert)
+		if err != nil {
+			fmt.Println("Couldn't get issuer certificate from leaf certificate, taking the second certificate in the chain as the issuer certificate")
+			issuerCert = certChain[1]
+		}
 	}
 
 	if shouldPrint {
