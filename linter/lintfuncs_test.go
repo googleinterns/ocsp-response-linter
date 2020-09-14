@@ -120,5 +120,5 @@ func TestLintNextUpdateDate(t *testing.T) {
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
-	})	
+	})
 }

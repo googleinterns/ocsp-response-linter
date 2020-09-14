@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	ProducedAtLimitSubscriber = "96h" // 4 days
-	ThisUpdateLimitSubscriber = "96h" // 4 days
-	ProducedAtLimitCA = "8760h" // 365 days
-	ThisUpdateLimitCA = "8760h" // 365 days
-	NextUpdateLimitSubscriber = "240h" // 10 days
+	ProducedAtLimitSubscriber = "96h"   // 4 days
+	ThisUpdateLimitSubscriber = "96h"   // 4 days
+	ProducedAtLimitCA         = "8760h" // 365 days
+	ThisUpdateLimitCA         = "8760h" // 365 days
+	NextUpdateLimitSubscriber = "240h"  // 10 days
 )
 
 // DurationToString is a map mapping durations to more readable strings
-var DurationToString = map[string]string {
+var DurationToString = map[string]string{
 	ProducedAtLimitSubscriber: "4 days",
-	ProducedAtLimitCA: "365 days",
+	ProducedAtLimitCA:         "365 days",
 	NextUpdateLimitSubscriber: "10 days",
 }
 
@@ -35,7 +35,7 @@ func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus
 	if algo == x509.SHA1WithRSA || algo == x509.DSAWithSHA1 || algo == x509.ECDSAWithSHA1 {
 		return Failed, "OCSP Response is signed with an algorithm that uses SHA1"
 	}
-	
+
 	return Passed, "OCSP Response is signed with an algorithm that does not use SHA1"
 }
 
@@ -57,11 +57,11 @@ func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 	}
 
 	if time.Since(resp.ProducedAt) > limit {
-		return Failed, fmt.Sprintf("OCSP Response producedAt date %s for %s is more than %s in the past", 
+		return Failed, fmt.Sprintf("OCSP Response producedAt date %s for %s is more than %s in the past",
 			resp.ProducedAt, certType, DurationToString[producedAtLimit])
 	}
 
-	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s in the past", 
+	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s in the past",
 		resp.ProducedAt, certType, DurationToString[producedAtLimit])
 }
 
@@ -82,14 +82,14 @@ func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 	}
 
 	if time.Since(resp.ThisUpdate) > limit {
-		return Failed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is more than %s in the past", 
+		return Failed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is more than %s in the past",
 			resp.ThisUpdate, certType, DurationToString[thisUpdateLimit])
-		
+
 	}
 
-	return Passed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is within %s in the past", 
+	return Passed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is within %s in the past",
 		resp.ThisUpdate, certType, DurationToString[thisUpdateLimit])
-	
+
 }
 
 // LintNextUpdateDate checks that an OCSP Response NextUpdate date is no more than NextUpdateLimitSubscriber in the past
@@ -105,12 +105,12 @@ func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 	}
 
 	if resp.NextUpdate.Sub(resp.ThisUpdate) > limit {
-		return Failed, fmt.Sprintf("OCSP Response NextUpdate date %s is more than %s after ThisUpdate date %s", 
+		return Failed, fmt.Sprintf("OCSP Response NextUpdate date %s is more than %s after ThisUpdate date %s",
 			resp.NextUpdate, DurationToString[NextUpdateLimitSubscriber], resp.ThisUpdate)
-		
+
 	}
 
-	return Passed, fmt.Sprintf("OCSP Response NextUpdate date %s is within %s after ThisUpdate date %s", 
+	return Passed, fmt.Sprintf("OCSP Response NextUpdate date %s is within %s after ThisUpdate date %s",
 		resp.NextUpdate, DurationToString[NextUpdateLimitSubscriber], resp.ThisUpdate)
-	
+
 }

@@ -16,7 +16,7 @@ import (
 
 const (
 	RespTimeLimit    = "10s" // Time limit for OCSP response to be served
-	TimeoutInSeconds = 20 // Time limit for http response before timeout
+	TimeoutInSeconds = 20    // Time limit for http response before timeout
 )
 
 // HelpersInterface is an interface for the functions that can be used from this file

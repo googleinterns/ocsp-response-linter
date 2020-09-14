@@ -19,29 +19,29 @@ var StatusIntMap = map[int]string{
 
 // LintStruct defines the struct of a lint
 type LintStruct struct {
-	Info   string                          // description of the lint
-	Source string                          // source of the lint
+	Info   string                                                                     // description of the lint
+	Source string                                                                     // source of the lint
 	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) // the linting function itself
 }
 
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
-	&LintStruct{
+	{
 		"Check response signature",
 		"Apple Lints 10 & 12",
 		CheckSignature,
 	},
-	&LintStruct{
+	{
 		"Check response producedAt date",
 		"Apple Lints 03 & 05",
 		LintProducedAtDate,
 	},
-	&LintStruct{
+	{
 		"Check response thisUpdate date",
 		"Apple Lints 03 & 05",
 		LintThisUpdateDate,
 	},
-	&LintStruct{
+	{
 		"Check response nextUpdate date",
 		"Apple Lint 04",
 		LintNextUpdateDate,
@@ -54,14 +54,14 @@ type LintStatus string
 const (
 	Passed LintStatus = "PASSED" // lint passed
 	Failed LintStatus = "FAILED" // lint failed
-	Error LintStatus = "ERROR" // encountered error while running lint
+	Error  LintStatus = "ERROR"  // encountered error while running lint
 )
 
 // LintResult defines the struct of the result of a Lint
 type LintResult struct {
-	Lint *LintStruct
+	Lint   *LintStruct
 	Status LintStatus
-	Info string
+	Info   string
 }
 
 // LinterInterface is an interface containing the functions that are exported from this file
@@ -104,9 +104,9 @@ func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, ve
 	for _, lint := range Lints {
 		status, info := lint.Exec(resp, leafCert)
 		results = append(results, &LintResult{
-			Lint: lint,
+			Lint:   lint,
 			Status: status,
-			Info: info,
+			Info:   info,
 		})
 	}
 

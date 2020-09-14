@@ -75,7 +75,7 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 		return err
 	}
 
-	leafCert := certChain[0]   // the certificate we want to send to the CA
+	leafCert := certChain[0] // the certificate we want to send to the CA
 
 	issuerCert, err := tools.ParseCertificateFile(issuerFile)
 	if err != nil {
@@ -144,7 +144,7 @@ func main() {
 
 	tools := ocsptools.Tools{}
 	linter := linter.Linter{}
-	
+
 	if *inresp && *incert {
 		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
 	}
@@ -183,7 +183,7 @@ func main() {
 			if err == nil {
 				continue
 			}
-			fmt.Printf("Validation failed for sending OCSP Request encoded with SHA256: %s \n\n" , err.Error())
+			fmt.Printf("Validation failed for sending OCSP Request encoded with SHA256: %s \n\n", err.Error())
 
 			err = checkFromCert(tools, linter, arg, iFile, *isPost, ocspURL, *dir, crypto.SHA1, *verbose)
 			if err != nil {

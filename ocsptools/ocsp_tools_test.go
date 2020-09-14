@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	GoodResp        = "../testdata/resps/oldfbresp" // good response
-	GoodCert        = "../testdata/certs/google.der" // good certificate
+	GoodResp        = "../testdata/resps/oldfbresp"        // good response
+	GoodCert        = "../testdata/certs/google.der"       // good certificate
 	GoodIssuerCert  = "../testdata/certs/googleissuer.der" // issuer certificate for good certificate
-	NoIssuerURLCert = "../testdata/certs/rootcert.der" // certificate with no issuer URL field
-	BadPath         = "blah///blah/blah.blah" // bad file path
-	URL             = "google.com:443" // sample URL
+	NoIssuerURLCert = "../testdata/certs/rootcert.der"     // certificate with no issuer URL field
+	BadPath         = "blah///blah/blah.blah"              // bad file path
+	URL             = "google.com:443"                     // sample URL
 )
 
 // TestReadOCSPResp tests ReadOCSPResp, which reads and parses an OCSP response file
