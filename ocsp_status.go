@@ -135,7 +135,7 @@ func main() {
 	issuerFile := flag.String("issuercert", "", "Space separated list of issuing certificate files")
 	ocspurl := flag.String("ocspurl", "", "Space separated list of OCSP urls to send requests to, default fetch from certificate")
 	shouldPrint := flag.Bool("print", false, "Whether to print certificate or not") // may remove this print flag
-	isPost := flag.Bool("post", false, "Whether to use POST for OCSP request")
+	isPost := flag.Bool("usepost", false, "Whether to use POST for OCSP request")
 	dir := flag.String("dir", "", "Where to write OCSP response")
 	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")
 	verbose := flag.Bool("verbose", false, "Whether to use verbose printing for printing lints")
