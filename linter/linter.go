@@ -3,10 +3,13 @@ package linter
 //go:generate mockgen -source=linter.go -destination=../mocks/lintermock/mock_linter.go -package=lintermock
 
 import (
+	"crypto/x509"
+	"fmt"
 	"golang.org/x/crypto/ocsp"
-	"log"
+	"sort"
 )
 
+// StatusIntMap maps ocsp statuses to strings
 var StatusIntMap = map[int]string{
 	ocsp.Good:    "good",
 	ocsp.Revoked: "revoked",
@@ -14,46 +17,98 @@ var StatusIntMap = map[int]string{
 	// ocsp.SeverFailed is never used: godoc.org/golang.org/x/crypto/ocsp#pkg-constants
 }
 
+// LintStruct defines the struct of a lint
 type LintStruct struct {
-	info   string                          // description of the lint
-	source string                          // source of the lint
-	exec   func(resp *ocsp.Response) error // the linting function itself
+	Info   string                          // description of the lint
+	Source string                          // source of the lint
+	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) // the linting function itself
 }
 
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
-var Lints = []LintStruct{
-	{
-		"Check that response producedAt date is no more than " + ProducedAtLimit + " in the past",
-		"Apple Lint 03",
+var Lints = []*LintStruct{
+	&LintStruct{
+		"Check response signature",
+		"Apple Lints 10 & 12",
+		CheckSignature,
+	},
+	&LintStruct{
+		"Check response producedAt date",
+		"Apple Lints 03 & 05",
 		LintProducedAtDate,
 	},
-	{
-		"Check that response thisUpdate date is no more than " + ThisUpdateLimit + " in the past",
-		"Apple Lint 03",
+	&LintStruct{
+		"Check response thisUpdate date",
+		"Apple Lints 03 & 05",
 		LintThisUpdateDate,
+	},
+	&LintStruct{
+		"Check response nextUpdate date",
+		"Apple Lint 04",
+		LintNextUpdateDate,
 	},
 }
 
-type LinterInterface interface {
-	LintOCSPResp(*ocsp.Response)
+// LintStatus defines the possible statuses for a lint
+type LintStatus string
+
+const (
+	Passed LintStatus = "PASSED" // lint passed
+	Failed LintStatus = "FAILED" // lint failed
+	Error LintStatus = "ERROR" // encountered error while running lint
+)
+
+// LintResult defines the struct of the result of a Lint
+type LintResult struct {
+	Lint *LintStruct
+	Status LintStatus
+	Info string
 }
 
+// LinterInterface is an interface containing the functions that are exported from this file
+type LinterInterface interface {
+	LintOCSPResp(*ocsp.Response, *x509.Certificate, bool)
+}
+
+// Linter is a struct of type LinterInterface
 type Linter struct{}
 
-// LintOCSPResp takes in a parsed OCSP response and prints its status
-// TODO: change function so that it returns a list of failed lints
-func (l Linter) LintOCSPResp(resp *ocsp.Response) {
-	log.Println("OCSP Response status: " + StatusIntMap[resp.Status]) // placeholder
+// printResults prints the results of all the lints run
+func printResults(results []*LintResult, verbose bool) {
+	fmt.Println("Printing lint results: ")
+	// sort by status so printing prints all the lints that errored, then failed, then passed
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Status < results[j].Status
+	})
 
-	log.Println("Linting OCSP Response...")
-	for _, lint := range Lints {
-		log.Print(lint.info + ": ")
-		err := lint.exec(resp)
-		if err == nil {
-			log.Println("passed")
-		} else {
-			log.Println("failed: " + err.Error())
+	allPassed := true
+
+	for _, result := range results {
+		if result.Status != Passed {
+			allPassed = false
+		}
+		if result.Status != Passed || verbose {
+			fmt.Printf("%s: %s: %s \n", result.Lint.Info, result.Status, result.Info)
 		}
 	}
-	log.Println("Finished linting OCSP response")
+
+	if allPassed {
+		fmt.Println("OCSP Response passed all lints")
+	}
+}
+
+// LintOCSPResp takes in a parsed OCSP response and prints its status, and then lints it
+func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, verbose bool) {
+	fmt.Printf("OCSP Response status: %s \n\n", StatusIntMap[resp.Status])
+
+	var results []*LintResult
+	for _, lint := range Lints {
+		status, info := lint.Exec(resp, leafCert)
+		results = append(results, &LintResult{
+			Lint: lint,
+			Status: status,
+			Info: info,
+		})
+	}
+
+	printResults(results, verbose)
 }

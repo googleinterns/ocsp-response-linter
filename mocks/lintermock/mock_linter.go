@@ -34,13 +34,13 @@ func (m *MockLinterInterface) EXPECT() *MockLinterInterfaceMockRecorder {
 }
 
 // LintOCSPResp mocks base method
-func (m *MockLinterInterface) LintOCSPResp(arg0 *ocsp.Response) {
+func (m *MockLinterInterface) LintOCSPResp(arg0 *ocsp.Response, arg1 bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "LintOCSPResp", arg0)
+	m.ctrl.Call(m, "LintOCSPResp", arg0, arg1)
 }
 
 // LintOCSPResp indicates an expected call of LintOCSPResp
-func (mr *MockLinterInterfaceMockRecorder) LintOCSPResp(arg0 interface{}) *gomock.Call {
+func (mr *MockLinterInterfaceMockRecorder) LintOCSPResp(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LintOCSPResp", reflect.TypeOf((*MockLinterInterface)(nil).LintOCSPResp), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LintOCSPResp", reflect.TypeOf((*MockLinterInterface)(nil).LintOCSPResp), arg0, arg1)
 }
