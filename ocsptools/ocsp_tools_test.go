@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	GoodResp = "../testdata/resps/oldfbresp"
-	GoodCert = "../testdata/certs/google.der"
-	GoodIssuerCert = "../testdata/certs/googleissuer.der"
-	NoIssuerURLCert = "../testdata/certs/rootcert.der"
-	BadPath  = "blah///blah/blah.blah"
-	URL = "google.com:443"
+	GoodResp        = "../testdata/resps/oldfbresp" // good response
+	GoodCert        = "../testdata/certs/google.der" // good certificate
+	GoodIssuerCert  = "../testdata/certs/googleissuer.der" // issuer certificate for good certificate
+	NoIssuerURLCert = "../testdata/certs/rootcert.der" // certificate with no issuer URL field
+	BadPath         = "blah///blah/blah.blah" // bad file path
+	URL             = "google.com:443" // sample URL
 )
 
 // TestReadOCSPResp tests ReadOCSPResp, which reads and parses an OCSP response file
@@ -88,7 +88,7 @@ func TestParseCertificateFile(t *testing.T) {
 	})
 }
 
-// TestGetIssuerCertFromLeafCert tests GetIssuerCertFromLeafCert, which checks for the 
+// TestGetIssuerCertFromLeafCert tests GetIssuerCertFromLeafCert, which checks for the
 // IssuingCertificateURL field in the given leaf certificate, and if it's present,
 // sends a GET request to that URL and parses the response into a certificate
 func TestGetIssuerCertFromLeafCert(t *testing.T) {
@@ -170,7 +170,7 @@ func TestFetchOCSPResp(t *testing.T) {
 	})
 
 	h.EXPECT().CreateOCSPReq(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
-	h.EXPECT().GetOCSPResp(gomock.Any()).Return([]byte{1,}, nil)
+	h.EXPECT().GetOCSPResp(gomock.Any()).Return([]byte{1}, nil)
 	t.Run("Bad OCSP Response", func(t *testing.T) {
 		_, err := tools.FetchOCSPResp(h, "", "", nil, nil, "", crypto.SHA1)
 		if err == nil {

@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	GoodCert = "../../testdata/certs/google.der"
-	GoodIssuerCert = "../../testdata/certs/googleissuer.der"
-	URL = "google.com:443"
+	GoodCert       = "../../testdata/certs/google.der" // good certificate
+	GoodIssuerCert = "../../testdata/certs/googleissuer.der" // issuer certificate for good certificate
+	URL            = "google.com:443" // sample URL
 )
 
 // TestCreateOCSPReq tests CreateOCSPReq, which builds an OCSP request to check

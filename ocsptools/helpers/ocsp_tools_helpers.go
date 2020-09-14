@@ -15,16 +15,18 @@ import (
 )
 
 const (
-	RespTimeLimit    = "10s"
-	TimeoutInSeconds = 20
+	RespTimeLimit    = "10s" // Time limit for OCSP response to be served
+	TimeoutInSeconds = 20 // Time limit for http response before timeout
 )
 
+// HelpersInterface is an interface for the functions that can be used from this file
 type HelpersInterface interface {
 	GetCertFromIssuerURL(string) (*x509.Certificate, error)
 	CreateOCSPReq(string, *x509.Certificate, *x509.Certificate, string, crypto.Hash) (*http.Request, error)
 	GetOCSPResp(*http.Request) ([]byte, error)
 }
 
+// Helpers is an exported struct of type HelpersInterface
 type Helpers struct{}
 
 // GetCertFromIssuerURL takes an issuerURL and sends a GET request to the URL to retrieve its certificate
