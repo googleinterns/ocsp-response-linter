@@ -1,7 +1,12 @@
 package linter
 
 import (
+	"bytes"
 	"crypto/x509"
+	"crypto/sha1"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rsa"
 	"fmt"
 	"golang.org/x/crypto/ocsp"
 	"time"
@@ -24,7 +29,7 @@ var DurationToString = map[string]string{
 
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
 // Source: Apple Lints 10 & 12
-func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	if resp.Signature == nil || len(resp.Signature) == 0 {
 		return Failed, "OCSP Response is not signed"
 	}
@@ -39,9 +44,60 @@ func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus
 	return Passed, "OCSP Response is signed with an algorithm that does not use SHA1"
 }
 
+// CheckResponder checks that the OCSP Responder is either the issuing CA or a delegated responder
+// issued by the issuing CA either by comparing public key hashes or names
+// Source: Apple Lint 13
+func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
+	// Exactly one of RawResponderName and ResponderKeyHash is set.
+	ocspResponder := resp.RawResponderName
+	issuer := issuerCert.RawSubject
+	if ocspResponder == nil {
+		// get SHA-1 hash of issuer public key
+		var keyBytes []byte
+
+		// need to add more cases in the future
+		switch pub := issuerCert.PublicKey.(type) {
+			case *rsa.PublicKey:
+				keyBytes = x509.MarshalPKCS1PublicKey(pub)
+			case *ecdsa.PublicKey:
+				keyBytes = elliptic.MarshalCompressed(pub.Curve, pub.X, pub.Y)
+			default:
+				return Unknown, fmt.Sprintf("Public Key type %T is not implemented", pub)
+		}
+
+		issuerKeyHash := sha1.Sum(keyBytes)
+		issuer = issuerKeyHash[:]
+
+		if bytes.Equal(resp.ResponderKeyHash, issuer) {
+			return Passed, "OCSP Responder is the Issuing CA"
+		}
+	}
+
+	if bytes.Equal(ocspResponder, issuer) {
+		return Passed, "OCSP Responder is the Issuing CA"
+	}
+
+	// check for extension
+	// check if responder was issued by issuer
+	ocspResponderCert := resp.Certificate
+	if ocspResponderCert == nil {
+		return Failed, "Delegated responder did not provide its certificate in OCSP response"
+	}
+
+	if ocspResponder != nil && bytes.Equal(issuer, ocspResponderCert.RawIssuer) {
+		return Passed, "OCSP Responder is issued by the Issuing CA"
+	}
+
+	// get public key for issuer of ocspResponderCert
+	// hash it
+	// compare it to resp.ResponderKeyHash
+
+	return Failed, "OCSP Responder is not issued by the Issuing CA"
+}
+
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lints 03 & 05
-func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
 	certType := "subscriber certificate"
 	producedAtLimit := ProducedAtLimitSubscriber
@@ -67,7 +123,7 @@ func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 
 // LintThisUpdateDate checks that an OCSP Response ThisUpdate date is no more than ThisUpdateLimit in the past
 // Source: Apple Lints 03 & 05
-func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
 	certType := "subscriber certificate"
 	thisUpdateLimit := ThisUpdateLimitSubscriber
@@ -94,7 +150,7 @@ func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintSt
 
 // LintNextUpdateDate checks that an OCSP Response NextUpdate date is no more than NextUpdateLimitSubscriber in the past
 // Source: Apple Lint 04
-func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	if leafCert != nil && leafCert.IsCA {
 		return Passed, "OCSP Response nextUpdate lint not applicable to CA certificates"
 	}
