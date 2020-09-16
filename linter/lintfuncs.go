@@ -50,7 +50,8 @@ func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert 
 func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	// Exactly one of RawResponderName and ResponderKeyHash is set.
 	ocspResponder := resp.RawResponderName
-	issuer := issuerCert.RawSubject
+
+	// check if OCSP Responder is Issuing CA
 	if ocspResponder == nil {
 		// get SHA-1 hash of issuer public key
 		var keyBytes []byte
@@ -66,33 +67,28 @@ func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert 
 		}
 
 		issuerKeyHash := sha1.Sum(keyBytes)
-		issuer = issuerKeyHash[:]
 
-		if bytes.Equal(resp.ResponderKeyHash, issuer) {
+		if bytes.Equal(resp.ResponderKeyHash, issuerKeyHash[:]) {
 			return Passed, "OCSP Responder is the Issuing CA"
 		}
 	}
 
-	if bytes.Equal(ocspResponder, issuer) {
+	if bytes.Equal(ocspResponder, issuerCert.RawSubject) {
 		return Passed, "OCSP Responder is the Issuing CA"
 	}
 
-	// check for extension
-	// check if responder was issued by issuer
 	ocspResponderCert := resp.Certificate
 	if ocspResponderCert == nil {
-		return Failed, "Delegated responder did not provide its certificate in OCSP response"
+		return Failed, "Unknown responder: responder did not provide its certificate in OCSP response"
 	}
 
-	if ocspResponder != nil && bytes.Equal(issuer, ocspResponderCert.RawIssuer) {
-		return Passed, "OCSP Responder is issued by the Issuing CA"
+	// check if OCSP responder is issued by Issuing CA
+	err := ocspResponderCert.CheckSignatureFrom(issuerCert)
+	if err != nil {
+		return Failed, "OCSP Responder is not issued by the Issuing CA"
 	}
 
-	// get public key for issuer of ocspResponderCert
-	// hash it
-	// compare it to resp.ResponderKeyHash
-
-	return Failed, "OCSP Responder is not issued by the Issuing CA"
+	return Passed, "OCSP Responder is issued by the Issuing CA"
 }
 
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
