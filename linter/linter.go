@@ -43,6 +43,11 @@ var Lints = []*LintStruct{
 		"Apple Lint 04",
 		LintNextUpdateDate,
 	},
+	{
+		"Check OCSP response status for non-issued certificate",
+		"Apple Lint 06",
+		LintStatusForNonIssuedCert,
+	},
 }
 
 // LinterInterface is an interface containing the functions that are exported from this file

@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/googleinterns/ocsp-response-linter/ocsptools"
+	"golang.org/x/crypto/ocsp"
 	"testing"
 	"time"
 )
@@ -176,7 +177,7 @@ func TestLintNextUpdateDate(t *testing.T) {
 		LeafCertNonIssued: false,
 		ExpectedStatus: None,
 	}
-	
+
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
@@ -194,6 +195,45 @@ func TestLintNextUpdateDate(t *testing.T) {
 		status, info := LintNextUpdateDate(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
+		}
+	})
+}
+
+// TestLintStatusForNonIssuedCert tests LintStatusForNonIssuedCert, which checks that an
+// OCSP Response for a non issued certificate has a status that is not Good
+// Source: Apple Lint 06
+func TestLintStatusForNonIssuedCert(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
+	}
+
+	t.Run("Issued Certificate", func(t *testing.T) {
+		status, info := LintStatusForNonIssuedCert(ocspResp, nil, mockLintOpts)
+		if status != Passed {
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
+		}
+	})
+
+	mockLintOpts.LeafCertNonIssued = true
+	t.Run("Non issued certificate with status good", func(t *testing.T) {
+		status, info := LintStatusForNonIssuedCert(ocspResp, nil, mockLintOpts)
+		if status != Failed {
+			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
+		}
+	})
+
+	ocspResp.Status = ocsp.Revoked
+	t.Run("Non issued certificate with status revoked", func(t *testing.T) {
+		status, info := LintStatusForNonIssuedCert(ocspResp, nil, mockLintOpts)
+		if status != Passed {
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
 	})
 }
