@@ -42,7 +42,7 @@ A complete table of available flags:
 | expectgood | Tell the linter to expect a good OCSP response | `./ocsp_status -expectgood google.com:443` |
 | expectrevoked | Tell the linter to expect a revoked OCSP response | `./ocsp_status -expectrevoked revokedgrc.com:443` |
 | cacert | Tell the linter that you are inputting a CA cert | `./ocsp_status -cacert -incert googleissuer_cert.der` |
-| nonissuedcert | Tell the linter that you are inputting a non-issued cert | `./ocsp_status -nonissuedcert -ocspurl=ocsp.google.com facebook.com:443` |
+| nonissued | Tell the linter that you are inputting a non-issued cert | `./ocsp_status -nonissuedcert -ocspurl=ocsp.google.com facebook.com:443` |
 | v | Print information on all lints (including passed lints) | `./ocsp_status -verbose google.com:443`|
 
 Note you can also do `./ocsp_status -help` to see a list of all possible flags and their descriptions.

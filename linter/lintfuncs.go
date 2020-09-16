@@ -48,6 +48,9 @@ func CheckSignature(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts 
 // issued by the issuing CA either by comparing public key hashes or names
 // Source: Apple Lint 13
 func CheckResponder(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if issuerCert == nil {
+		return Unknown, "Issuer certificate not provided, can't check responder"		
+	}
 	// Exactly one of RawResponderName and ResponderKeyHash is set.
 	ocspResponder := resp.RawResponderName
 
@@ -161,4 +164,18 @@ func LintNextUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintO
 	return Passed, fmt.Sprintf("OCSP Response NextUpdate date %s is within %s after ThisUpdate date %s",
 		resp.NextUpdate, DurationToString[NextUpdateLimitSubscriber], resp.ThisUpdate)
 
+}
+
+// LintStatusForNonIssuedCert checks that an OCSP response for a non-issued certificate does not have status Good
+// Source: Apple Lint 06
+func LintStatusForNonIssuedCert(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if !lintOpts.LeafCertNonIssued {
+		return Passed, "OCSP Response is for issued certificate"
+	}
+
+	if resp.Status != ocsp.Good {
+		return Passed, "OCSP Response for non-issued certificate does not have status Good"
+	}
+
+	return Failed, "OCSP Response for non-issued certificate has status Good"
 }

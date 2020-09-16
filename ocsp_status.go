@@ -124,7 +124,7 @@ func main() {
 	expectRevoke := flag.Bool("expectrevoke", false, "Whether to expect revoked OCSP response")
 
 	caCert := flag.Bool("cacert", false, "Whether certificate is for a CA")
-	nonIssuedCert := flag.Bool("nonissuedcert", false, "Whether certificate is not issued by CA")
+	nonIssuedCert := flag.Bool("nonissued", false, "Whether certificate is not issued by CA")
 
 	verbose := flag.Bool("v", false, "Whether to use verbose printing for printing lints")
 
