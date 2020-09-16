@@ -7,6 +7,7 @@ package lintermock
 import (
 	x509 "crypto/x509"
 	gomock "github.com/golang/mock/gomock"
+	linter "github.com/googleinterns/ocsp-response-linter/linter"
 	ocsp "golang.org/x/crypto/ocsp"
 	reflect "reflect"
 )
@@ -35,7 +36,7 @@ func (m *MockLinterInterface) EXPECT() *MockLinterInterfaceMockRecorder {
 }
 
 // LintOCSPResp mocks base method
-func (m *MockLinterInterface) LintOCSPResp(arg0 *ocsp.Response, arg1, arg2 *x509.Certificate, arg3 bool) {
+func (m *MockLinterInterface) LintOCSPResp(arg0 *ocsp.Response, arg1 *x509.Certificate, arg2 *linter.LintOpts, arg3 bool) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "LintOCSPResp", arg0, arg1, arg2, arg3)
 }
