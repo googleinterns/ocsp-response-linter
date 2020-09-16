@@ -29,7 +29,7 @@ var DurationToString = map[string]string{
 
 // CheckStatus checks that the status of the OCSP response matches what the user expects it to be
 // Source: Apple Lint 07
-func CheckStatus(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+func CheckStatus(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if lintOpts.ExpectedStatus == None {
 		return Passed, fmt.Sprintf("User did not specify an expected status (fyi OCSP response status was %s)", StatusIntMap[resp.Status])
 	} 
@@ -48,7 +48,7 @@ func CheckStatus(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *Li
 
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
 // Source: Apple Lints 10 & 12
-func CheckSignature(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if resp.Signature == nil || len(resp.Signature) == 0 {
 		return Failed, "OCSP Response is not signed"
 	}
@@ -66,7 +66,7 @@ func CheckSignature(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts 
 // CheckResponder checks that the OCSP Responder is either the issuing CA or a delegated responder
 // issued by the issuing CA either by comparing public key hashes or names
 // Source: Apple Lint 13
-func CheckResponder(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if issuerCert == nil {
 		return Unknown, "Issuer certificate not provided, can't check responder"		
 	}
@@ -114,8 +114,8 @@ func CheckResponder(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts 
 }
 
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
-// Source: Apple Lints 03 & 05
-func LintProducedAtDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+// Source: Apple Lints 03, 05, & 19
+func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
 	producedAtLimit := ProducedAtLimitSubscriber
 	if lintOpts.LeafCertType == CA {
@@ -138,8 +138,17 @@ func LintProducedAtDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintO
 }
 
 // LintThisUpdateDate checks that an OCSP Response ThisUpdate date is no more than ThisUpdateLimit in the past
-// Source: Apple Lints 03 & 05
-func LintThisUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+// Source: Apple Lints 03, 05, & 19
+func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if resp.ThisUpdate.After(time.Now()) {
+		return Failed, fmt.Sprintf("OCSP response thisUpdate date %s is in the future", resp.ThisUpdate)
+	}
+
+	if leafCert != nil && resp.ThisUpdate.Before(leafCert.NotBefore) {
+		return Failed, fmt.Sprintf("OCSP response thisUpdate date %s is before certificate issuance date %s",
+			resp.ThisUpdate, leafCert.NotBefore)
+	}
+
 	// default assume certificate being checked is a subscriber certificate
 	thisUpdateLimit := ThisUpdateLimitSubscriber
 	if lintOpts.LeafCertType == CA {
@@ -164,7 +173,7 @@ func LintThisUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintO
 
 // LintNextUpdateDate checks that an OCSP Response NextUpdate date is no more than NextUpdateLimitSubscriber in the past
 // Source: Apple Lint 04
-func LintNextUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if lintOpts.LeafCertType == CA {
 		return Passed, "OCSP Response nextUpdate lint not applicable to CA certificates"
 	}
@@ -187,7 +196,7 @@ func LintNextUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintO
 
 // LintStatusForNonIssuedCert checks that an OCSP response for a non-issued certificate does not have status Good
 // Source: Apple Lint 06
-func LintStatusForNonIssuedCert(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+func LintStatusForNonIssuedCert(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if !lintOpts.LeafCertNonIssued {
 		return Passed, "OCSP Response is for issued certificate"
 	}

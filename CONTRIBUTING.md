@@ -2,35 +2,28 @@
 
 ## Adding a New Lint
 
-First write the function body of the lint in the `linter/lintfuncs.go` file, which should be of the form `func(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string)`. `LintStatus` is an enum that takes the value `Passed`, `Failed`, or `Error`, which should indicate whether the lint passed, failed, or errored while running. The string returned should provide additional information on the status.
+First write the function body of the lint in the `linter/lintfuncs.go` file, which should be of the form `func(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string)`. `LintStatus` is an enum that takes the value `Passed`, `Failed`, or `Error`, which should indicate whether the lint passed, failed, or errored while running. The string returned should provide additional information on the status.
 
 Example:
 
 ```go
-// LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
-// Source: Apple Lints 03 & 05
-func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
-	// default assume certificate being checked is a subscriber certificate
-	certType := "subscriber certificate"
-	producedAtLimit := ProducedAtLimitSubscriber
-	if leafCert != nil && leafCert.IsCA {
-		certType = "subordinate CA certificate"
-		producedAtLimit = ProducedAtLimitCA
+// CheckStatus checks that the status of the OCSP response matches what the user expects it to be
+// Source: Apple Lint 07
+func CheckStatus(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if lintOpts.ExpectedStatus == None {
+		return Passed, fmt.Sprintf("User did not specify an expected status (fyi OCSP response status was %s)", StatusIntMap[resp.Status])
+	} 
+
+	expectedStatus := ocsp.Good
+	if lintOpts.ExpectedStatus == Revoked {
+		expectedStatus = ocsp.Revoked
 	}
 
-	limit, err := time.ParseDuration(producedAtLimit)
-
-	if err != nil {
-		return Error, fmt.Sprintf("Could not parse time duration %s", producedAtLimit)
+	if resp.Status != expectedStatus {
+		return Failed, fmt.Sprintf("Expected status %s, OCSP response status was %s", lintOpts.ExpectedStatus, StatusIntMap[resp.Status])
 	}
 
-	if time.Since(resp.ProducedAt) > limit {
-		return Failed, fmt.Sprintf("OCSP Response producedAt date %s for %s is more than %s in the past", 
-			resp.ProducedAt, certType, DurationToString[producedAtLimit])
-	}
-
-	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s of the past", 
-		resp.ProducedAt, certType, DurationToString[producedAtLimit])
+	return Passed, fmt.Sprintf("OCSP Response status matched expected status of %s", lintOpts.ExpectedStatus)
 }
 ```
 
@@ -39,29 +32,41 @@ Next please write unit tests for your new linting function in `linter/lintfuncs_
 Example:
 
 ```go
-// TestLintProducedAtDate tests LintProducedAtDate, which checks that an
-// OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
-// Source: Apple Lint 03
-func TestLintProducedAtDate(t *testing.T) {
-	tools := ocsptools.Tools{}
-	ocspResp, err := tools.ReadOCSPResp(RespBadDates)
-	if err != nil {
-		panic(err)
+// TestCheckStatus tests CheckStatus, which checks whether or not the OCSP response
+// status matches what the user expected
+// Source: Apple Lint 07
+func TestCheckStatus(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
 	}
 
-	t.Run("Old ProducedAt date", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil, nil)
-		if status != Failed {
-			t.Errorf("Should have had error, instead got: %s", info)
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
+	}
+
+	t.Run("No expected status", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, nil, mockLintOpts)
+		if status != Passed {
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
 	})
 
-	ocspResp.ProducedAt = time.Now()
+	mockLintOpts.ExpectedStatus = Revoked
+	t.Run("Expected status revoked for good response", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, nil, mockLintOpts)
+		if status != Failed {
+			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
+		}
+	})
 
-	t.Run("Happy path", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil, nil)
+	mockLintOpts.ExpectedStatus = Good
+	t.Run("Expected status good for good response", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, nil, mockLintOpts)
 		if status != Passed {
-			t.Errorf("Should not have gotten error, instead got error: %s", info)
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
 	})
 }
@@ -71,10 +76,10 @@ Finally in `linter/linter.go`, add the address of a new `LintStruct` to the glob
 
 Example:
 ```go
-&LintStruct{
-	"Check response producedAt date",
-	"Apple Lints 03 & 05",
-	LintProducedAtDate,
+{
+	"Check response status",
+	"Apple Lint 07",
+	CheckStatus,
 }
 ```
 

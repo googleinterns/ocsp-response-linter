@@ -70,7 +70,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
-		_, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
 		if err != nil {
 			t.Errorf("Got error reading good certificate file: %s", err.Error())
 		}
@@ -79,7 +79,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().ParseCertificateFile(Resp).Return(nil, fmt.Errorf(""))
 
 	t.Run("ParseCertificateFile errors", func(t *testing.T) {
-		_, _, err := checkFromCert(mt, Resp, nil, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromCert(mt, Resp, nil, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error when ParseCertificateFile errors")
 		}
@@ -90,7 +90,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().GetIssuerCertFromLeafCert(gomock.Any(), nil).Return(nil, fmt.Errorf(""))
 
 	t.Run("GetIssuerCertFromLeafCert errors", func(t *testing.T) {
-		_, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error when GetIssuerCertFromLeafCert errors")
 		}
@@ -102,7 +102,7 @@ func TestCheckFromCert(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
 
 	t.Run("FetchOCSPResp errors", func(t *testing.T) {
-		_, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromCert(mt, Cert, nil, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error when FetchOCSPResp errors")
 		}
@@ -124,7 +124,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&ocsp.Response{}, nil)
 
 	t.Run("Happy path", func(t *testing.T) {
-		_, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
 		if err != nil {
 			t.Errorf("Got error from good URL: %s", err.Error())
 		}
@@ -135,7 +135,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 
 	t.Run("Happy path with stapled OCSP Response", func(t *testing.T) {
-		_, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
 		if err != nil {
 			t.Errorf("Got error with stapled OCSP Response: %s", err.Error())
 		}
@@ -146,7 +146,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().ParseCertificateFile("").Return(nil, nil)
 
 	t.Run("Bad byte array for OCSP Response", func(t *testing.T) {
-		_, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error parsing bad byte array into OCSP response")
 		}
@@ -155,7 +155,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().GetCertChainAndStapledResp(gomock.Any()).Return(nil, nil, fmt.Errorf(""))
 
 	t.Run("GetCertChainAndStapledResp errors", func(t *testing.T) {
-		_, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error when GetCertChainAndStapledResp errors")
 		}
@@ -167,7 +167,7 @@ func TestCheckFromURL(t *testing.T) {
 	mt.EXPECT().FetchOCSPResp(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(""))
 
 	t.Run("FetchOCSPResp errors", func(t *testing.T) {
-		_, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
+		_, _, _, err := checkFromURL(mt, URL, nil, false, false, false, "", "", crypto.SHA1)
 		if err == nil {
 			t.Errorf("Should have gotten error when FetchOCSPResp errors")
 		}
