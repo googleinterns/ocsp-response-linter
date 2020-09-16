@@ -111,7 +111,6 @@ func checkFromURL(tools ocsptools.ToolsInterface, serverURL string, issuerCert *
 // main parses the users commandline arguments & flags and then runs the appropriate functions
 func main() {
 	// TODO: extract flag descriptions into constants?
-	// TODO: I'm not sure if I should support putting multiple ocsp requests in at once anymore
 	inresp := flag.Bool("inresp", false, "Whether to read in an OCSP response or not")
 	incert := flag.Bool("incert", false, "Whether to read in certificate file or not")
 	issuerFile := flag.String("issuercert", "", "Issuing certificate file")
