@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 
 type MockLinter struct{}
 
-func (ml MockLinter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, verbose bool) {}
+func (ml MockLinter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, verbose bool) {}
 
 // TestCheckFromFile tests checkFromFile, which reads an OCSP response file and lints it
 func TestCheckFromFile(t *testing.T) {

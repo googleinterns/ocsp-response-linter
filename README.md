@@ -41,6 +41,6 @@ A complete table of available flags:
 | usepost    | Use POST to send the OCSP request (default is GET)    | `./ocsp_status -post google.com:443` |
 | dir     | Write the OCSP response to a file                     | `./ocsp_status -dir=google_resp google.com:443`|
 | nostaple| Don't use the stapled OCSP response (only use with server URLs) | `./ocsp_status -nostaple google.com:443` |
-| verbose | Print information on all lints (default is only printing failed/errored lints) | `./ocsp_status -verbose google.com:443`|
+| v | Print information on all lints (default is only printing failed/errored lints) | `./ocsp_status -verbose google.com:443`|
 
 Note you can also do `./ocsp_status -help` to see a list of all possible flags and their descriptions.

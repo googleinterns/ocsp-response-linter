@@ -2,14 +2,14 @@
 
 ## Adding a New Lint
 
-First write the function body of the lint in the `linter/lintfuncs.go` file, which should be of the form `func(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string)`. `LintStatus` is an enum that takes the value `Passed`, `Failed`, or `Error`, which should indicate whether the lint passed, failed, or errored while running. The string returned should provide additional information on the status.
+First write the function body of the lint in the `linter/lintfuncs.go` file, which should be of the form `func(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string)`. `LintStatus` is an enum that takes the value `Passed`, `Failed`, or `Error`, which should indicate whether the lint passed, failed, or errored while running. The string returned should provide additional information on the status.
 
 Example:
 
 ```go
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lints 03 & 05
-func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) {
+func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
 	certType := "subscriber certificate"
 	producedAtLimit := ProducedAtLimitSubscriber
@@ -50,7 +50,7 @@ func TestLintProducedAtDate(t *testing.T) {
 	}
 
 	t.Run("Old ProducedAt date", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil)
+		status, info := LintProducedAtDate(ocspResp, nil, nil)
 		if status != Failed {
 			t.Errorf("Should have had error, instead got: %s", info)
 		}
@@ -59,7 +59,7 @@ func TestLintProducedAtDate(t *testing.T) {
 	ocspResp.ProducedAt = time.Now()
 
 	t.Run("Happy path", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil)
+		status, info := LintProducedAtDate(ocspResp, nil, nil)
 		if status != Passed {
 			t.Errorf("Should not have gotten error, instead got error: %s", info)
 		}

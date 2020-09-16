@@ -25,7 +25,7 @@ func checkFromFile(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 		return fmt.Errorf("Error parsing certificate from certificate file: %w", err)
 	}
 
-	linter.LintOCSPResp(ocspResp, issuerCert, verbose)
+	linter.LintOCSPResp(ocspResp, nil, issuerCert, verbose)
 
 	return nil
 }
@@ -62,7 +62,7 @@ func checkFromCert(tools ocsptools.ToolsInterface, linter linter.LinterInterface
 		return fmt.Errorf("Error fetching OCSP response: %w", err)
 	}
 
-	linter.LintOCSPResp(ocspResp, leafCert, verbose)
+	linter.LintOCSPResp(ocspResp, leafCert, issuerCert, verbose)
 
 	return nil
 }
@@ -122,7 +122,8 @@ func checkFromURL(tools ocsptools.ToolsInterface, linter linter.LinterInterface,
 		}
 	}
 
-	linter.LintOCSPResp(parsedResp, leafCert, verbose)
+	// TODO: CHANGE issuerCert back to leafCert
+	linter.LintOCSPResp(parsedResp, leafCert, issuerCert, verbose)
 
 	return nil
 }
@@ -138,7 +139,7 @@ func main() {
 	isPost := flag.Bool("usepost", false, "Whether to use POST for OCSP request")
 	dir := flag.String("dir", "", "Where to write OCSP response")
 	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")
-	verbose := flag.Bool("verbose", false, "Whether to use verbose printing for printing lints")
+	verbose := flag.Bool("v", false, "Whether to use verbose printing for printing lints")
 
 	flag.Parse()
 

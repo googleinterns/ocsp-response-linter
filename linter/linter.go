@@ -21,7 +21,7 @@ var StatusIntMap = map[int]string{
 type LintStruct struct {
 	Info   string                                                                     // description of the lint
 	Source string                                                                     // source of the lint
-	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate) (LintStatus, string) // the linting function itself
+	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) // the linting function itself
 }
 
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
@@ -30,6 +30,11 @@ var Lints = []*LintStruct{
 		"Check response signature",
 		"Apple Lints 10 & 12",
 		CheckSignature,
+	},
+	{
+		"Check OCSP responder",
+		"Apple Lint 13",
+		CheckResponder,
 	},
 	{
 		"Check response producedAt date",
@@ -54,6 +59,7 @@ type LintStatus string
 const (
 	Passed LintStatus = "PASSED" // lint passed
 	Failed LintStatus = "FAILED" // lint failed
+	Unknown LintStatus = "UNKNOWN" // unknown whether lint passed or failed
 	Error  LintStatus = "ERROR"  // encountered error while running lint
 )
 
@@ -66,7 +72,7 @@ type LintResult struct {
 
 // LinterInterface is an interface containing the functions that are exported from this file
 type LinterInterface interface {
-	LintOCSPResp(*ocsp.Response, *x509.Certificate, bool)
+	LintOCSPResp(*ocsp.Response, *x509.Certificate, *x509.Certificate, bool)
 }
 
 // Linter is a struct of type LinterInterface
@@ -97,12 +103,12 @@ func printResults(results []*LintResult, verbose bool) {
 }
 
 // LintOCSPResp takes in a parsed OCSP response and prints its status, and then lints it
-func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, verbose bool) {
+func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, verbose bool) {
 	fmt.Printf("OCSP Response status: %s \n\n", StatusIntMap[resp.Status])
 
 	var results []*LintResult
 	for _, lint := range Lints {
-		status, info := lint.Exec(resp, leafCert)
+		status, info := lint.Exec(resp, leafCert, issuerCert)
 		results = append(results, &LintResult{
 			Lint:   lint,
 			Status: status,
