@@ -11,13 +11,20 @@ import (
 
 // LintStruct defines the struct of a lint
 type LintStruct struct {
-	Info   string                                                                     // description of the lint
-	Source string                                                                     // source of the lint
-	Exec   func(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) // the linting function itself
+	Info   string // description of the lint                                                                    
+	Source string // source of the lint
+	// the linting function
+	Exec   func(resp *ocsp.Response, leafCert *x509.Certificate, 
+		issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) 
 }
 
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
+	{
+		"Check response status",
+		"Apple Lint 07",
+		CheckStatus,
+	},
 	{
 		"Check response signature",
 		"Apple Lints 10 & 12",
@@ -30,12 +37,12 @@ var Lints = []*LintStruct{
 	},
 	{
 		"Check response producedAt date",
-		"Apple Lints 03 & 05",
+		"Apple Lints 03, 05, & 19",
 		LintProducedAtDate,
 	},
 	{
 		"Check response thisUpdate date",
-		"Apple Lints 03 & 05",
+		"Apple Lints 03, 05, & 19",
 		LintThisUpdateDate,
 	},
 	{
@@ -52,7 +59,7 @@ var Lints = []*LintStruct{
 
 // LinterInterface is an interface containing the functions that are exported from this file
 type LinterInterface interface {
-	LintOCSPResp(*ocsp.Response, *x509.Certificate, *LintOpts, bool)
+	LintOCSPResp(*ocsp.Response, *x509.Certificate, *x509.Certificate, *LintOpts, bool)
 }
 
 // Linter is a struct of type LinterInterface
@@ -83,12 +90,10 @@ func printResults(results []*LintResult, verbose bool) {
 }
 
 // LintOCSPResp takes in a parsed OCSP response and prints its status, and then lints it
-func (l Linter) LintOCSPResp(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts, verbose bool) {
-	fmt.Printf("OCSP Response status: %s \n\n", StatusIntMap[resp.Status])
-
+func (l Linter) LintOCSPResp(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate, lintOpts *LintOpts, verbose bool) {
 	var results []*LintResult
 	for _, lint := range Lints {
-		status, info := lint.Exec(resp, issuerCert, lintOpts)
+		status, info := lint.Exec(resp, leafCert, issuerCert, lintOpts)
 		results = append(results, &LintResult{
 			Lint:   lint,
 			Status: status,
