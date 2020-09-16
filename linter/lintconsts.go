@@ -12,8 +12,8 @@ const (
 
 type OCSPStatus string
 const (
-	Good OCSPStatus = "Good"
-	Revoked OCSPStatus = "Revoked"
+	Good OCSPStatus = "good"
+	Revoked OCSPStatus = "revoked"
 	None OCSPStatus = ""
 )
 

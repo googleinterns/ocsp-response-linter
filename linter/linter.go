@@ -19,6 +19,11 @@ type LintStruct struct {
 // Lints is the global array of lints that are to be tested (TODO: change to a map)
 var Lints = []*LintStruct{
 	{
+		"Check response status",
+		"Apple Lint 07",
+		CheckStatus,
+	},
+	{
 		"Check response signature",
 		"Apple Lints 10 & 12",
 		CheckSignature,
@@ -84,8 +89,6 @@ func printResults(results []*LintResult, verbose bool) {
 
 // LintOCSPResp takes in a parsed OCSP response and prints its status, and then lints it
 func (l Linter) LintOCSPResp(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts, verbose bool) {
-	fmt.Printf("OCSP Response status: %s \n\n", StatusIntMap[resp.Status])
-
 	var results []*LintResult
 	for _, lint := range Lints {
 		status, info := lint.Exec(resp, issuerCert, lintOpts)

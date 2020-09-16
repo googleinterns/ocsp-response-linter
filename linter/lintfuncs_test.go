@@ -15,6 +15,45 @@ const (
 	GoogleIssuerCert = "../testdata/certs/googleissuer.der"
 )
 
+// TestCheckStatus tests CheckStatus, which checks whether or not the OCSP response
+// status matches what the user expected
+// Source: Apple Lint 07
+func TestCheckStatus(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
+	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
+	}
+
+	t.Run("No expected status", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, mockLintOpts)
+		if status != Passed {
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
+		}
+	})
+
+	mockLintOpts.ExpectedStatus = Revoked
+	t.Run("Expected status revoked for good response", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, mockLintOpts)
+		if status != Failed {
+			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
+		}
+	})
+
+	mockLintOpts.ExpectedStatus = Good
+	t.Run("Expected status good for good response", func(t *testing.T) {
+		status, info := CheckStatus(ocspResp, nil, mockLintOpts)
+		if status != Passed {
+			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
+		}
+	})
+}
+
 // TestCheckSignature tests CheckSignature, which checks that an OCSP Response
 // signature is present and not signed with an algorithm that uses SHA-1
 // Source: Apple Lints 10 & 12

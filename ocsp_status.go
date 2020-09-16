@@ -121,7 +121,7 @@ func main() {
 	noStaple := flag.Bool("nostaple", false, "Whether to send an OCSP request regardless of if there is a stapled OCSP response")
 
 	expectGood := flag.Bool("expectgood", false, "Whether to expect good OCSP response")
-	expectRevoke := flag.Bool("expectrevoke", false, "Whether to expect revoked OCSP response")
+	expectRevoked := flag.Bool("expectrevoked", false, "Whether to expect revoked OCSP response")
 
 	caCert := flag.Bool("cacert", false, "Whether certificate is for a CA")
 	nonIssuedCert := flag.Bool("nonissued", false, "Whether certificate is not issued by CA")
@@ -136,8 +136,8 @@ func main() {
 		panic("This tool can only parse one file format at a time. Please use only one of -inresp or -incert.")
 	}
 
-	if *expectGood && *expectRevoke {
-		panic("Please use only one of -expectpass or -expectrevoke.")
+	if *expectGood && *expectRevoked {
+		panic("Please use only one of -expectpass or -expectrevoked.")
 	}
 
 	// create lint opts
@@ -149,7 +149,7 @@ func main() {
 	expectedStatus := linter.None
 	if *expectGood {
 		expectedStatus = linter.Good
-	} else if *expectRevoke {
+	} else if *expectRevoked {
 		expectedStatus = linter.Revoked
 	}
 

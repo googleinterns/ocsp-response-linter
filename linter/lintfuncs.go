@@ -27,6 +27,25 @@ var DurationToString = map[string]string{
 	NextUpdateLimitSubscriber: "10 days",
 }
 
+// CheckStatus checks that the status of the OCSP response matches what the user expects it to be
+// Source: Apple Lint 07
+func CheckStatus(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if lintOpts.ExpectedStatus == None {
+		return Passed, fmt.Sprintf("User did not specify an expected status (fyi OCSP response status was %s)", StatusIntMap[resp.Status])
+	} 
+
+	expectedStatus := ocsp.Good
+	if lintOpts.ExpectedStatus == Revoked {
+		expectedStatus = ocsp.Revoked
+	}
+
+	if resp.Status != expectedStatus {
+		return Failed, fmt.Sprintf("Expected status %s, OCSP response status was %s", lintOpts.ExpectedStatus, StatusIntMap[resp.Status])
+	}
+
+	return Passed, fmt.Sprintf("OCSP Response status matched expected status of %s", lintOpts.ExpectedStatus)
+}
+
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
 // Source: Apple Lints 10 & 12
 func CheckSignature(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
