@@ -29,7 +29,7 @@ var DurationToString = map[string]string{
 
 // CheckSignature checks in the ocsp response is signed with an algorithm that uses SHA1
 // Source: Apple Lints 10 & 12
-func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
+func CheckSignature(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	if resp.Signature == nil || len(resp.Signature) == 0 {
 		return Failed, "OCSP Response is not signed"
 	}
@@ -47,7 +47,7 @@ func CheckSignature(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert 
 // CheckResponder checks that the OCSP Responder is either the issuing CA or a delegated responder
 // issued by the issuing CA either by comparing public key hashes or names
 // Source: Apple Lint 13
-func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
+func CheckResponder(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	// Exactly one of RawResponderName and ResponderKeyHash is set.
 	ocspResponder := resp.RawResponderName
 
@@ -93,12 +93,10 @@ func CheckResponder(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert 
 
 // LintProducedAtDate checks that an OCSP Response ProducedAt date is no more than ProducedAtLimit in the past
 // Source: Apple Lints 03 & 05
-func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
+func LintProducedAtDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
-	certType := "subscriber certificate"
 	producedAtLimit := ProducedAtLimitSubscriber
-	if leafCert != nil && leafCert.IsCA {
-		certType = "subordinate CA certificate"
+	if lintOpts.LeafCertType == CA {
 		producedAtLimit = ProducedAtLimitCA
 	}
 
@@ -110,21 +108,19 @@ func LintProducedAtDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerC
 
 	if time.Since(resp.ProducedAt) > limit {
 		return Failed, fmt.Sprintf("OCSP Response producedAt date %s for %s is more than %s in the past",
-			resp.ProducedAt, certType, DurationToString[producedAtLimit])
+			resp.ProducedAt, lintOpts.LeafCertType, DurationToString[producedAtLimit])
 	}
 
 	return Passed, fmt.Sprintf("OCSP Response producedAt date %s for %s is within %s in the past",
-		resp.ProducedAt, certType, DurationToString[producedAtLimit])
+		resp.ProducedAt, lintOpts.LeafCertType, DurationToString[producedAtLimit])
 }
 
 // LintThisUpdateDate checks that an OCSP Response ThisUpdate date is no more than ThisUpdateLimit in the past
 // Source: Apple Lints 03 & 05
-func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
+func LintThisUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
 	// default assume certificate being checked is a subscriber certificate
-	certType := "subscriber certificate"
 	thisUpdateLimit := ThisUpdateLimitSubscriber
-	if leafCert != nil && leafCert.IsCA {
-		certType = "subordinate CA certificate"
+	if lintOpts.LeafCertType == CA {
 		thisUpdateLimit = ThisUpdateLimitCA
 	}
 
@@ -135,19 +131,19 @@ func LintThisUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerC
 
 	if time.Since(resp.ThisUpdate) > limit {
 		return Failed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is more than %s in the past",
-			resp.ThisUpdate, certType, DurationToString[thisUpdateLimit])
+			resp.ThisUpdate, lintOpts.LeafCertType, DurationToString[thisUpdateLimit])
 
 	}
 
 	return Passed, fmt.Sprintf("OCSP Response thisUpdate date %s for %s is within %s in the past",
-		resp.ThisUpdate, certType, DurationToString[thisUpdateLimit])
+		resp.ThisUpdate, lintOpts.LeafCertType, DurationToString[thisUpdateLimit])
 
 }
 
 // LintNextUpdateDate checks that an OCSP Response NextUpdate date is no more than NextUpdateLimitSubscriber in the past
 // Source: Apple Lint 04
-func LintNextUpdateDate(resp *ocsp.Response, leafCert *x509.Certificate, issuerCert *x509.Certificate) (LintStatus, string) {
-	if leafCert != nil && leafCert.IsCA {
+func LintNextUpdateDate(resp *ocsp.Response, issuerCert *x509.Certificate, lintOpts *LintOpts) (LintStatus, string) {
+	if lintOpts.LeafCertType == CA {
 		return Passed, "OCSP Response nextUpdate lint not applicable to CA certificates"
 	}
 

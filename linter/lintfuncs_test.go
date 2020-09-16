@@ -18,13 +18,19 @@ const (
 // signature is present and not signed with an algorithm that uses SHA-1
 // Source: Apple Lints 10 & 12
 func TestCheckSignature(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Happy Path", func(t *testing.T) {
-		status, info := CheckSignature(ocspResp, nil, nil)
+		status, info := CheckSignature(ocspResp, nil, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -32,7 +38,7 @@ func TestCheckSignature(t *testing.T) {
 
 	ocspResp.SignatureAlgorithm = x509.SHA1WithRSA
 	t.Run("SHA1 signature algorithm", func(t *testing.T) {
-		status, info := CheckSignature(ocspResp, nil, nil)
+		status, info := CheckSignature(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
@@ -40,7 +46,7 @@ func TestCheckSignature(t *testing.T) {
 
 	ocspResp.Signature = nil
 	t.Run("No signature", func(t *testing.T) {
-		status, info := CheckSignature(ocspResp, nil, nil)
+		status, info := CheckSignature(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
@@ -51,6 +57,12 @@ func TestCheckSignature(t *testing.T) {
 // is either the issuing CA or a delegated responder issued by the issuing CA
 // Source: Apple Lint 13
 func TestCheckResponder(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(GoogleResp)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", GoogleResp, err))
@@ -62,7 +74,7 @@ func TestCheckResponder(t *testing.T) {
 	}
 
 	t.Run("OCSP Responder is Issuer CA, check public keys", func (t *testing.T) {
-		status, info := CheckResponder(ocspResp, nil, issuerCert)
+		status, info := CheckResponder(ocspResp, issuerCert, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -72,7 +84,7 @@ func TestCheckResponder(t *testing.T) {
 	issuerCert.RawSubject = []byte{1}
 
 	t.Run("OCSP Responder is Issuer CA, check names", func (t *testing.T) {
-		status, info := CheckResponder(ocspResp, nil, issuerCert)
+		status, info := CheckResponder(ocspResp, issuerCert, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -84,7 +96,7 @@ func TestCheckResponder(t *testing.T) {
 	}
 
 	t.Run("No certificate in delegate responder's OCSP response", func(t *testing.T) {
-		status, info := CheckResponder(badResp, nil, issuerCert)
+		status, info := CheckResponder(badResp, issuerCert, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
@@ -95,13 +107,19 @@ func TestCheckResponder(t *testing.T) {
 // OCSP Response ProducedAt date is not too far in the past
 // Source: Apple Lints 03 & 05
 func TestLintProducedAtDate(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Old ProducedAt date", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil, nil)
+		status, info := LintProducedAtDate(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
@@ -110,7 +128,7 @@ func TestLintProducedAtDate(t *testing.T) {
 	ocspResp.ProducedAt = time.Now()
 
 	t.Run("Happy path", func(t *testing.T) {
-		status, info := LintProducedAtDate(ocspResp, nil, nil)
+		status, info := LintProducedAtDate(ocspResp, nil, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -121,13 +139,19 @@ func TestLintProducedAtDate(t *testing.T) {
 // OCSP Response ThisUpdate date is not too far in the past
 // Source: Apple Lints 03 & 05
 func TestLintThisUpdateDate(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Old ThisUpdate date", func(t *testing.T) {
-		status, info := LintThisUpdateDate(ocspResp, nil, nil)
+		status, info := LintThisUpdateDate(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
@@ -136,7 +160,7 @@ func TestLintThisUpdateDate(t *testing.T) {
 	ocspResp.ThisUpdate = time.Now()
 
 	t.Run("Happy path", func(t *testing.T) {
-		status, info := LintThisUpdateDate(ocspResp, nil, nil)
+		status, info := LintThisUpdateDate(ocspResp, nil, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -147,13 +171,19 @@ func TestLintThisUpdateDate(t *testing.T) {
 // NextUpdate date is no more than NextUpdateLimit in the future of its ThisUpdate date
 // Source: Apple Lint 04
 func TestLintNextUpdateDate(t *testing.T) {
+	mockLintOpts := &LintOpts{
+		LeafCertType: Subscriber,
+		LeafCertNonIssued: false,
+		ExpectedStatus: None,
+	}
+	
 	ocspResp, err := ocsptools.Tools{}.ReadOCSPResp(RespBadDates)
 	if err != nil {
 		panic(fmt.Sprintf("Could not read OCSP Response file %s: %s", RespBadDates, err))
 	}
 
 	t.Run("Happy path", func(t *testing.T) {
-		status, info := LintNextUpdateDate(ocspResp, nil, nil)
+		status, info := LintNextUpdateDate(ocspResp, nil, mockLintOpts)
 		if status != Passed {
 			t.Errorf("Lint should have passed, instead got status %s: %s", status, info)
 		}
@@ -161,7 +191,7 @@ func TestLintNextUpdateDate(t *testing.T) {
 
 	ocspResp.NextUpdate = time.Now()
 	t.Run("NextUpdate date too far in the future", func(t *testing.T) {
-		status, info := LintNextUpdateDate(ocspResp, nil, nil)
+		status, info := LintNextUpdateDate(ocspResp, nil, mockLintOpts)
 		if status != Failed {
 			t.Errorf("Lint should have failed, instead got status %s: %s", status, info)
 		}
